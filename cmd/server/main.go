@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"https://github.com/DavidMWeaver4/Davids_Redis_Clone/internal/server/"
-	"https://github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store/"
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/server"
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
 func main() {
