@@ -13,8 +13,36 @@ func New() *Store {
 	}
 }
 
-//TODO
-// Set(key, value)
-// Get(key)(string, bool)
-// Delete(key)
-// Exists(key)(bool)
+func (s *Store) Set(key, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.data[key] = value
+}
+
+func (s *Store) Get(key string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	value, ok := s.data[key]
+	return value, ok
+}
+
+func (s *Store) Delete(key string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, exists := s.data[key]
+	if !exists {
+		return 0
+	}
+	delete(s.data, key)
+	return 1
+}
+
+func (s *Store) Exists(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	_, ok := s.data[key]
+	return ok
+}

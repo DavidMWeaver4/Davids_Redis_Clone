@@ -1,9 +1,10 @@
 package server
 
 import (
-	"fmt"
+	"bufio"
 	"log"
 	"net"
+	"strings"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
@@ -40,13 +41,19 @@ func (s *Server) ListenAndServe() error {
 func (s *Server) handleClient(conn net.Conn) {
 	defer conn.Close()
 
-	buffer := make([]byte, 1024)
+	reader := bufio.NewReader(conn)
 
 	for {
-		n, err := conn.Read(buffer)
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			log.Printf("error: %v", err)
+			return
 		}
-		fmt.Printf("server got %q", buffer[:n])
+		line = strings.TrimSpace(line)
+		err = s.execute(line, conn)
+		if err != nil {
+			log.Printf("client error %v", err)
+			return
+		}
 	}
 }
