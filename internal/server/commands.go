@@ -13,7 +13,7 @@ var commandHandlers = map[string]commandHandler{
 	"PING":   ping,
 	"SET":    set,
 	"GET":    get,
-	"DEL":    del,
+	"DEL":    deleteCommand,
 	"EXISTS": exists,
 }
 
@@ -56,7 +56,7 @@ func get(s *Server, args []string) protocol.Value {
 	return protocol.NewBulkString(value)
 }
 
-func del(s *Server, args []string) protocol.Value {
+func deleteCommand(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("ERR need 1 argument for 'del'")
 	}
