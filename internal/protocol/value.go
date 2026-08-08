@@ -9,6 +9,7 @@ const (
 	BulkString   ValueType = "bulk_string"
 	Array        ValueType = "array"
 	Null         ValueType = "null"
+	NullArray    ValueType = "null_array"
 )
 
 type Value struct {
@@ -58,5 +59,11 @@ func NewArray(values []Value) Value {
 	return Value{
 		Type:  Array,
 		Array: values,
+	}
+}
+
+func NewNullArray() Value {
+	return Value{
+		Type: NullArray,
 	}
 }
