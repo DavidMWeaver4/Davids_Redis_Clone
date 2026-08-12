@@ -21,7 +21,7 @@ func TestCommands_Ping_Success(t *testing.T) {
 	}
 }
 
-func TestCommands_Set_Sucess(t *testing.T) {
+func TestCommands_Set_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
@@ -41,23 +41,194 @@ func TestCommands_Set_Sucess(t *testing.T) {
 	}
 }
 func TestCommands_Set_InvalidArgumentCount(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "no arguments",
+			args: []string{},
+		},
+		{
+			name: "one argument",
+			args: []string{"Foo"},
+		},
+		{
+			name: "three arguments",
+			args: []string{"Foo", "Bar", "Baz"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := set(s, tt.args)
+
+			if got.Type != protocol.Error {
+				t.Fatalf("expected Error, got %v", got.Type)
+			}
+		})
+	}
 }
 func TestCommands_Get_Success(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar")
+
+	response := get(s, []string{"Foo"})
+
+	if response.Type != protocol.BulkString {
+		t.Fatalf("expected BulkString, got %v", response.Type)
+	}
+
+	if response.Str != "Bar" {
+		t.Fatalf("expected %q, got %q", "Bar", response.Str)
+	}
 }
+
 func TestCommands_Get_MissingKey(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := get(s, []string{"Foo"})
+
+	if response.Type != protocol.Null {
+		t.Fatalf("expected Null, got %v", response.Type)
+	}
 }
-func TestCommands_Del_Success_(t *testing.T) {
-	t.Skip()
+
+func TestCommands_Get_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := [][]string{
+		{},
+		{"Foo", "Bar"},
+	}
+
+	for _, args := range tests {
+		response := get(s, args)
+
+		if response.Type != protocol.Error {
+			t.Fatalf("expected Error, got %v", response.Type)
+		}
+	}
 }
+
+func TestCommands_Del_Success(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar")
+
+	response := deleteCommand(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+
+	_, ok := s.store.Get("Foo")
+	if ok {
+		t.Fatal("expected key to be deleted")
+	}
+}
+
 func TestCommands_Del_MissingKey(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := deleteCommand(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 0 {
+		t.Fatalf("expected 0, got %d", response.Int)
+	}
 }
+
+func TestCommands_Del_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := [][]string{
+		{},
+		{"Foo", "Bar"},
+	}
+
+	for _, args := range tests {
+		response := deleteCommand(s, args)
+
+		if response.Type != protocol.Error {
+			t.Fatalf("expected Error, got %v", response.Type)
+		}
+	}
+}
+
 func TestCommands_Exists_Success(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar")
+
+	response := exists(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
 }
+
 func TestCommands_Exists_MissingKey(t *testing.T) {
-	t.Skip()
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := exists(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 0 {
+		t.Fatalf("expected 0, got %d", response.Int)
+	}
+}
+
+func TestCommands_Exists_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := [][]string{
+		{},
+		{"Foo", "Bar"},
+	}
+
+	for _, args := range tests {
+		response := exists(s, args)
+
+		if response.Type != protocol.Error {
+			t.Fatalf("expected Error, got %v", response.Type)
+		}
+	}
 }

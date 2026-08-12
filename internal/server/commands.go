@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net"
 	"strings"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
@@ -17,17 +16,30 @@ var commandHandlers = map[string]commandHandler{
 	"EXISTS": exists,
 }
 
-func (s *Server) execute(command string, conn net.Conn) error {
-	parts := strings.Fields(command)
-	if len(parts) == 0 {
-		return protocol.Write(conn, protocol.NewError("ERR no command entered"))
+func (s *Server) execute(command protocol.Value) protocol.Value {
+	if command.Type != protocol.Array {
+		return protocol.NewError("ERR command must be an array")
 	}
-	handler, ok := commandHandlers[strings.ToUpper(parts[0])]
+	if len(command.Array) == 0 {
+		return protocol.NewError("ERR no command entered")
+	}
+	cmd := command.Array[0]
+	if cmd.Type != protocol.BulkString {
+		return protocol.NewError("ERR command must be a bulk string")
+	}
+	args := make([]string, len(command.Array)-1)
+
+	for i, value := range command.Array[1:] {
+		if value.Type != protocol.BulkString {
+			return protocol.NewError("ERR arguments must be bulk strings")
+		}
+		args[i] = value.Str
+	}
+	handler, ok := commandHandlers[strings.ToUpper(cmd.Str)]
 	if !ok {
-		return protocol.Write(conn, protocol.NewError("ERR invalid command"))
+		return protocol.NewError("ERR invalid command")
 	}
-	response := handler(s, parts[1:])
-	return protocol.Write(conn, response)
+	return handler(s, args)
 }
 func ping(s *Server, args []string) protocol.Value {
 	return protocol.NewSimpleString("PONG")

@@ -2,10 +2,12 @@ package server
 
 import (
 	"bufio"
+	"errors"
+	"io"
 	"log"
 	"net"
-	"strings"
 
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
@@ -44,15 +46,19 @@ func (s *Server) handleClient(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	for {
-		line, err := reader.ReadString('\n')
+		value, err := protocol.Read(reader)
 		if err != nil {
-			log.Printf("error: %v", err)
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			log.Printf("client read error: %v", err)
 			return
 		}
-		line = strings.TrimSpace(line)
-		err = s.execute(line, conn)
+
+		response := s.execute(value)
+		err = protocol.Write(conn, response)
 		if err != nil {
-			log.Printf("client error %v", err)
+			log.Printf("client error: %v", err)
 			return
 		}
 	}
