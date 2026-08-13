@@ -234,6 +234,51 @@ func TestServer_HandleClient_ConnectionClosing(t *testing.T) {
 	}
 }
 
+func TestServer_HandleClient_SetWithTTL(t *testing.T) {
+	server := New("", store.New())
+	clientConn, reader, done := newTestConnection(t, server)
+
+	_, err := clientConn.Write([]byte(
+		"*5\r\n" +
+			"$3\r\nSET\r\n" +
+			"$3\r\nfoo\r\n" +
+			"$3\r\nbar\r\n" +
+			"$2\r\nEX\r\n" +
+			"$1\r\n1\r\n",
+	))
+	if err != nil {
+		t.Fatalf("failed to send RESP: %v", err)
+	}
+
+	got, err := reader.ReadString('\n')
+	if err != nil {
+		t.Fatalf("failed to read response: %v", err)
+	}
+	if got != "+OK\r\n" {
+		t.Fatalf("expected +OK\\r\\n, got %q", got)
+	}
+
+	value, ok := server.store.Get("foo")
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+	if value != "bar" {
+		t.Fatalf("expected value %q, got %q", "bar", value)
+	}
+
+	ttl := server.store.TTL("foo")
+	if ttl != 0 && ttl != 1 {
+		t.Fatalf("expected TTL of 0 or 1, got %d", ttl)
+	}
+	clientConn.Close()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("server did not close client connection")
+	}
+}
+
 func newTestConnection(t *testing.T, server *Server) (net.Conn, *bufio.Reader, <-chan struct{}) {
 	t.Helper()
 	serverConn, clientConn := net.Pipe()

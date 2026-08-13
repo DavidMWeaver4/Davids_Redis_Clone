@@ -1,38 +1,59 @@
 package store
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Store struct {
 	mu   sync.RWMutex
-	data map[string]string
+	data map[string]Entry
+}
+type Entry struct {
+	Value     string
+	ExpiresAt time.Time
 }
 
 func New() *Store {
 	return &Store{
-		data: make(map[string]string),
+		data: make(map[string]Entry),
 	}
 }
 
-func (s *Store) Set(key, value string) {
+func (s *Store) Set(key, value string, ttl time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	s.data[key] = value
+	entry := Entry{Value: value}
+	if ttl > 0 {
+		entry.ExpiresAt = time.Now().Add(ttl)
+	}
+	s.data[key] = entry
 }
 
 func (s *Store) Get(key string) (string, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	value, ok := s.data[key]
-	return value, ok
+	entry, ok := s.data[key]
+	if !ok {
+		return "", false
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
+		return "", false
+	}
+	return entry.Value, true
 }
 
 func (s *Store) Delete(key string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, exists := s.data[key]
-	if !exists {
+	entry, ok := s.data[key]
+	if !ok {
+		return 0
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
 		return 0
 	}
 	delete(s.data, key)
@@ -40,9 +61,27 @@ func (s *Store) Delete(key string) int {
 }
 
 func (s *Store) Exists(key string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	_, ok := s.data[key]
+	_, ok := s.Get(key)
 	return ok
+}
+
+func (s *Store) TTL(key string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.data[key]
+	if !ok {
+		return -2
+	}
+	if entry.ExpiresAt.IsZero() {
+		return -1
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
+		return -2
+	}
+	return int(time.Until(entry.ExpiresAt) / time.Second)
+}
+
+func isExpired(entry Entry) bool {
+	return !entry.ExpiresAt.IsZero() && !time.Now().Before(entry.ExpiresAt)
 }

@@ -1,7 +1,9 @@
 package server
 
 import (
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
@@ -14,6 +16,7 @@ var commandHandlers = map[string]commandHandler{
 	"GET":    get,
 	"DEL":    deleteCommand,
 	"EXISTS": exists,
+	"TTL":    ttl,
 }
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
@@ -46,14 +49,27 @@ func ping(s *Server, args []string) protocol.Value {
 }
 
 func set(s *Server, args []string) protocol.Value {
-	if len(args) != 2 {
-		return protocol.NewError("ERR need 2 arguments for 'set'")
-
+	if len(args) != 2 && len(args) != 4 {
+		return protocol.NewError("ERR need 2 or 4 arguments for 'set'")
 	}
+	var ttl time.Duration
 	key := args[0]
 	value := args[1]
-
-	s.store.Set(key, value)
+	if len(args) == 4 {
+		ok := strings.EqualFold(args[2], "EX")
+		if !ok {
+			return protocol.NewError("ERR need EX as third argument in 'set'")
+		}
+		seconds, err := strconv.Atoi(args[3])
+		if err != nil {
+			return protocol.NewError("ERR invalid expire time in 'set'")
+		}
+		if seconds <= 0 {
+			return protocol.NewError("ERR expire time must be positive in 'set'")
+		}
+		ttl = time.Second * time.Duration(seconds)
+	}
+	s.store.Set(key, value, ttl)
 	return protocol.NewSimpleString("OK")
 }
 
@@ -84,4 +100,12 @@ func exists(s *Server, args []string) protocol.Value {
 		return protocol.NewInteger(1)
 	}
 	return protocol.NewInteger(0)
+}
+
+func ttl(s *Server, args []string) protocol.Value {
+	if len(args) != 1 {
+		return protocol.NewError("ERR need 1 argument for 'ttl'")
+	}
+	seconds := s.store.TTL(args[0])
+	return protocol.NewInteger(int64(seconds))
 }
