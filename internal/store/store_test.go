@@ -239,7 +239,7 @@ func TestStore_TTL_ExpiredKey(t *testing.T) {
 		t.Fatalf("TTL = %d, want -2", got)
 	}
 }
-func TestStore_DeleteExpiredKey(t *testing.T) {
+func TestStore_Delete_ExpiredKey(t *testing.T) {
 	c := New()
 	c.Set("Foo", "Bar", 10*time.Millisecond)
 	time.Sleep(20 * time.Millisecond)
@@ -247,5 +247,123 @@ func TestStore_DeleteExpiredKey(t *testing.T) {
 	got := c.Delete("Foo")
 	if got != 0 {
 		t.Fatalf("Delete = %d, want 0", got)
+	}
+}
+
+func TestStore_Expire_ExistingKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 10*time.Millisecond)
+	ok := c.Expire("Foo", 5*time.Second)
+	if !ok {
+		t.Fatal("expected Expire to succeed")
+	}
+	_, exists := c.data["Foo"]
+	if !exists {
+		t.Fatal("expected key to still exist")
+	}
+	ttl := c.TTL("Foo")
+	if ttl < 4 || ttl > 5 {
+		t.Fatalf("expected TTL around 5, got %d", ttl)
+	}
+}
+
+func TestStore_Expire_MissingKey(t *testing.T) {
+	c := New()
+	ok := c.Expire("Foo", 5*time.Second)
+	if ok {
+		t.Fatal("expected Expire to fail for missing key")
+	}
+	_, exists := c.data["Foo"]
+	if exists {
+		t.Fatal("expect missing key to not exists")
+	}
+}
+
+func TestStore_Expire_AlreadyExpiredKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 10*time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+
+	ok := c.Expire("Foo", 5*time.Second)
+	if ok {
+		t.Fatalf("expected Expire to fail for expired key")
+	}
+	_, exists := c.data["Foo"]
+	if exists {
+		t.Fatal("expected expired key to have been deleted")
+	}
+}
+
+func TestStore_Persist_ExistingKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 10*time.Millisecond)
+	ok := c.Persist("Foo")
+	if !ok {
+		t.Fatal("expected persist to succeed")
+	}
+	_, exists := c.data["Foo"]
+	if !exists {
+		t.Fatal("expected key to exist")
+	}
+	ttl := c.TTL("Foo")
+	if ttl != -1 {
+		t.Fatalf("expected ttl to be -1, got %v", ttl)
+	}
+}
+func TestStore_Persist_MissingKey(t *testing.T) {
+	c := New()
+	ok := c.Persist("Foo")
+	if ok {
+		t.Fatal("expected Persist to fail for missing key")
+	}
+	_, exists := c.data["Foo"]
+	if exists {
+		t.Fatal("expect missing key to not exists")
+	}
+}
+func TestStore_Persist_AlreadyPersistant(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 0)
+	prettl := c.TTL("Foo")
+	if prettl != -1 {
+		t.Fatal("setup failure")
+	}
+	ok := c.Persist("Foo")
+	if ok {
+		t.Fatal("expected persist to not succeed")
+	}
+	_, exists := c.data["Foo"]
+	if !exists {
+		t.Fatal("expected key to exist")
+	}
+	ttl := c.TTL("Foo")
+	if ttl != -1 {
+		t.Fatalf("expected ttl to be -1, got %v", ttl)
+	}
+}
+func TestStore_Persist_ExpiredKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 5*time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
+	ok := c.Persist("Foo")
+	if ok {
+		t.Fatal("expected persist to not succeed")
+	}
+	_, exists := c.data["Foo"]
+	if exists {
+		t.Fatal("expected expired key to be deleted")
+	}
+}
+func TestStore_Persist_CheckAfterOriginalExpirationTime(t *testing.T) {
+	c := New()
+	c.Set("Foo", "Bar", 10*time.Millisecond)
+	ok := c.Persist("Foo")
+	if !ok {
+		t.Fatal("expected persist to succeed")
+	}
+	time.Sleep(20 * time.Millisecond)
+	value, exists := c.Get("Foo")
+	if !exists || value != "Bar" {
+		t.Fatal("expected persisted key to remain after original expiration time")
 	}
 }

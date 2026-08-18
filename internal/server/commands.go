@@ -11,12 +11,14 @@ import (
 type commandHandler func(*Server, []string) protocol.Value
 
 var commandHandlers = map[string]commandHandler{
-	"PING":   ping,
-	"SET":    set,
-	"GET":    get,
-	"DEL":    deleteCommand,
-	"EXISTS": exists,
-	"TTL":    ttl,
+	"PING":    ping,
+	"SET":     set,
+	"GET":     get,
+	"DEL":     deleteCommand,
+	"EXISTS":  exists,
+	"TTL":     ttl,
+	"EXPIRE":  expire,
+	"PERSIST": persist,
 }
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
@@ -108,4 +110,31 @@ func ttl(s *Server, args []string) protocol.Value {
 	}
 	seconds := s.store.TTL(args[0])
 	return protocol.NewInteger(int64(seconds))
+}
+
+func expire(s *Server, args []string) protocol.Value {
+	if len(args) != 2 {
+		return protocol.NewError("ERR need 2 arguments for 'expire'")
+	}
+	seconds, err := strconv.Atoi(args[1])
+	if err != nil {
+		return protocol.NewError("ERR invalid expire time in 'expire'")
+	}
+	if seconds <= 0 {
+		return protocol.NewError("ERR expire time must be positive number")
+	}
+	if !s.store.Expire(args[0], time.Duration(seconds)*time.Second) {
+		return protocol.NewInteger(0)
+	}
+	return protocol.NewInteger(1)
+}
+
+func persist(s *Server, args []string) protocol.Value {
+	if len(args) != 1 {
+		return protocol.NewError("ERR need 1 arguments for 'persist'")
+	}
+	if !s.store.Persist(args[0]) {
+		return protocol.NewInteger(0)
+	}
+	return protocol.NewInteger(1)
 }

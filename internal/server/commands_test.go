@@ -342,3 +342,132 @@ func TestCommands_TTL_InvaludArgumentCount(t *testing.T) {
 		}
 	}
 }
+
+func TestCommands_Expire_Success(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+	response := expire(s, []string{"Foo", "10"})
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+	ttl := s.store.TTL("Foo")
+	if ttl < 9 || ttl > 10 {
+		t.Fatalf("expected TTL around 10, got %d", ttl)
+	}
+}
+
+func TestCommands_Expire_MissingKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	response := expire(s, []string{"Foo", "10"})
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+	if response.Int != 0 {
+		t.Fatalf("expected failure due to missing key, got %d", response.Int)
+	}
+}
+func TestCommands_Expire_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+	response := expire(s, []string{"Foo", "Bar", "10", "EXP"})
+	if response.Type != protocol.Error {
+		t.Fatalf("expected error, got %v", response.Type)
+	}
+}
+func TestCommands_Expire_InvalidExpiration(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+	response := expire(s, []string{"Foo", "x10x1x"})
+	if response.Type != protocol.Error {
+		t.Fatalf("expected error, got %v", response.Type)
+	}
+}
+func TestCommands_Expire_NegativeExpiration(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+	response := expire(s, []string{"Foo", "-100"})
+	if response.Type != protocol.Error {
+		t.Fatalf("expected error, got %v", response.Type)
+	}
+}
+func TestCommands_Expire_ZeroExpiration(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+	response := expire(s, []string{"Foo", "0"})
+	if response.Type != protocol.Error {
+		t.Fatalf("expected error, got %v", response.Type)
+	}
+}
+
+func TestCommands_Persist_Success(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 10*time.Second)
+	response := persist(s, []string{"Foo"})
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+	ttl := s.store.TTL("Foo")
+	if ttl != -1 {
+		t.Fatalf("expected ttl to be -1, got %d", ttl)
+	}
+}
+
+func TestCommands_Persist_MissingKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	response := persist(s, []string{"Foo"})
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+	if response.Int != 0 {
+		t.Fatalf("expected failure due to missing key, got %d", response.Int)
+	}
+}
+
+func TestCommands_Persist_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 10*time.Second)
+	response := persist(s, []string{"Foo", "Bar", "10"})
+	if response.Type != protocol.Error {
+		t.Fatalf("expected error, got %v", response.Type)
+	}
+}
+
+func TestCommands_Persist_AlreadyPersistent(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+	s.store.Set("Foo", "Bar", 0)
+
+	response := persist(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+	if response.Int != 0 {
+		t.Fatalf("expected 0 for already persistent key, got %d", response.Int)
+	}
+}
