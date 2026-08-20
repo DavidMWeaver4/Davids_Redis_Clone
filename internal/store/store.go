@@ -17,6 +17,11 @@ type Entry struct {
 	ExpiresAt time.Time
 }
 
+var (
+	ErrNotIntegerOrOutOfRange = errors.New("value is not an integer or out of range")
+	ErrNegativeDecrement      = errors.New("decrement must be non-negative")
+)
+
 func New() *Store {
 	return &Store{
 		data: make(map[string]Entry),
@@ -137,10 +142,10 @@ func (s *Store) Incr(key string) (int64, error) {
 	}
 	value, err := strconv.ParseInt(entry.Value, 10, 64)
 	if err != nil {
-		return 0, errors.New("value is not an integer")
+		return 0, ErrNotIntegerOrOutOfRange
 	}
 	if value == math.MaxInt64 {
-		return 0, errors.New("increment would cause integer overflow")
+		return 0, ErrNotIntegerOrOutOfRange
 	}
 	value++
 	entry.Value = strconv.FormatInt(value, 10)
@@ -159,13 +164,45 @@ func (s *Store) Decr(key string) (int64, error) {
 	}
 	value, err := strconv.ParseInt(entry.Value, 10, 64)
 	if err != nil {
-		return 0, errors.New("value is not an integer")
+		return 0, ErrNotIntegerOrOutOfRange
 	}
 	if value == math.MinInt64 {
-		return 0, errors.New("decrement would cause integer overflow")
+		return 0, ErrNotIntegerOrOutOfRange
 	}
 	value--
 	entry.Value = strconv.FormatInt(value, 10)
 	s.data[key] = entry
 	return value, nil
+}
+
+func (s *Store) Incrby(key string, inc int64) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok || isExpired(entry) {
+		s.data[key] = Entry{Value: strconv.FormatInt(inc, 10)}
+		return inc, nil
+	}
+	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if err != nil {
+		return 0, ErrNotIntegerOrOutOfRange
+	}
+	if inc > 0 && value > math.MaxInt64-inc {
+		return 0, ErrNotIntegerOrOutOfRange
+	}
+	if inc < 0 && value < math.MinInt64-inc {
+		return 0, ErrNotIntegerOrOutOfRange
+	}
+	value += inc
+	entry.Value = strconv.FormatInt(value, 10)
+	s.data[key] = entry
+	return value, nil
+}
+
+func (s *Store) Decrby(key string, dec int64) (int64, error) {
+	if dec < 0 {
+		return 0, ErrNegativeDecrement
+	}
+	return s.Incrby(key, -dec)
 }

@@ -21,7 +21,7 @@ func TestWrite_SimpleString_Success(t *testing.T) {
 
 func TestWrite_Error_Success(t *testing.T) {
 	var buf bytes.Buffer
-	err := Write(&buf, NewError("ERR invalid command"))
+	err := Write(&buf, NewError("invalid command"))
 	if err != nil {
 		t.Fatal(err)
 	}

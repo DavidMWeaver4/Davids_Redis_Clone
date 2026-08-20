@@ -11,7 +11,7 @@ func Write(w io.Writer, v Value) error {
 		_, err := fmt.Fprintf(w, "+%s\r\n", v.Str)
 		return err
 	case Error:
-		_, err := fmt.Fprintf(w, "-%s\r\n", v.Str)
+		_, err := fmt.Fprintf(w, "-ERR %s\r\n", v.Str)
 		return err
 	case Integer:
 		_, err := fmt.Fprintf(w, ":%d\r\n", v.Int)
