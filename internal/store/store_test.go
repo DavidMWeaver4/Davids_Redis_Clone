@@ -2,7 +2,9 @@ package store
 
 import (
 	"fmt"
+	"math"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -365,5 +367,298 @@ func TestStore_Persist_CheckAfterOriginalExpirationTime(t *testing.T) {
 	value, exists := c.Get("Foo")
 	if !exists || value != "Bar" {
 		t.Fatal("expected persisted key to remain after original expiration time")
+	}
+}
+func TestStore_Incr_Success(t *testing.T) {
+	c := New()
+	c.Set("Foo", "20", 0)
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 21 {
+		t.Fatalf("expected 21, got %d", got)
+	}
+
+	value, ok := c.Get("Foo")
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+
+	if value != "21" {
+		t.Fatalf("expected stored value %q, got %q", "21", value)
+	}
+}
+func TestStore_Incr_PreservesTTL(t *testing.T) {
+	c := New()
+
+	c.Set("Foo", "20", 10*time.Second)
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 21 {
+		t.Fatalf("expected 21, got %d", got)
+	}
+
+	ttl := c.TTL("Foo")
+	if ttl < 8 || ttl > 10 {
+		t.Fatalf("expected TTL around 10, got %d", ttl)
+	}
+}
+func TestStore_Incr_MissingKey(t *testing.T) {
+	c := New()
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 1 {
+		t.Fatalf("expected 1, got %d", got)
+	}
+
+	value, ok := c.Get("Foo")
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+
+	if value != "1" {
+		t.Fatalf("expected value %q, got %q", "1", value)
+	}
+}
+func TestStore_Incr_NegativeValue(t *testing.T) {
+	c := New()
+	c.Set("Foo", "-20", 0)
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != -19 {
+		t.Fatalf("expected -19, got %d", got)
+	}
+}
+func TestStore_Incr_NonInteger(t *testing.T) {
+	c := New()
+	c.Set("Foo", "hello", 0)
+
+	_, err := c.Incr("Foo")
+	if err == nil {
+		t.Fatal("expected error for non-integer value")
+	}
+}
+func TestStore_Incr_Overflow(t *testing.T) {
+	c := New()
+	c.Set("Foo", strconv.FormatInt(math.MaxInt64, 10), 0)
+
+	_, err := c.Incr("Foo")
+	if err == nil {
+		t.Fatal("expected overflow error")
+	}
+}
+func TestStore_Incr_ExpiredKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "20", 5*time.Millisecond)
+
+	time.Sleep(10 * time.Millisecond)
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 1 {
+		t.Fatalf("expected 1, got %d", got)
+	}
+}
+func TestStore_Incr_Zero(t *testing.T) {
+	c := New()
+	c.Set("Foo", "0", 0)
+
+	got, err := c.Incr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 1 {
+		t.Fatalf("expected 1, got %d", got)
+	}
+}
+func TestStore_Decr_Success(t *testing.T) {
+	c := New()
+	c.Set("Foo", "20", 0)
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 19 {
+		t.Fatalf("expected 19, got %d", got)
+	}
+
+	value, ok := c.Get("Foo")
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+
+	if value != "19" {
+		t.Fatalf("expected stored value %q, got %q", "19", value)
+	}
+}
+func TestStore_Decr_PreservesTTL(t *testing.T) {
+	c := New()
+
+	c.Set("Foo", "20", 10*time.Second)
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != 19 {
+		t.Fatalf("expected 19, got %d", got)
+	}
+
+	ttl := c.TTL("Foo")
+	if ttl < 8 || ttl > 10 {
+		t.Fatalf("expected TTL around 10, got %d", ttl)
+	}
+}
+func TestStore_Decr_MissingKey(t *testing.T) {
+	c := New()
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != -1 {
+		t.Fatalf("expected -1, got %d", got)
+	}
+}
+func TestStore_Decr_NegativeValue(t *testing.T) {
+	c := New()
+	c.Set("Foo", "-20", 0)
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != -21 {
+		t.Fatalf("expected -21, got %d", got)
+	}
+}
+func TestStore_Decr_NonInteger(t *testing.T) {
+	c := New()
+	c.Set("Foo", "hello", 0)
+
+	_, err := c.Decr("Foo")
+	if err == nil {
+		t.Fatal("expected error for non-integer value")
+	}
+}
+func TestStore_Decr_Overflow(t *testing.T) {
+	c := New()
+	c.Set("Foo", strconv.FormatInt(math.MinInt64, 10), 0)
+
+	_, err := c.Decr("Foo")
+	if err == nil {
+		t.Fatal("expected overflow error")
+	}
+}
+func TestStore_Decr_ExpiredKey(t *testing.T) {
+	c := New()
+	c.Set("Foo", "20", 5*time.Millisecond)
+
+	time.Sleep(10 * time.Millisecond)
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != -1 {
+		t.Fatalf("expected -1, got %d", got)
+	}
+}
+func TestStore_Decr_Zero(t *testing.T) {
+	c := New()
+	c.Set("Foo", "0", 0)
+
+	got, err := c.Decr("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != -1 {
+		t.Fatalf("expected -1, got %d", got)
+	}
+}
+func TestStore_ConcurrentIncr(t *testing.T) {
+	c := New()
+	c.Set("Foo", "0", 0)
+
+	const workers = 100
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+
+			_, err := c.Incr("Foo")
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	value, ok := c.Get("Foo")
+	if !ok {
+		t.Fatal("expected Foo to exist")
+	}
+
+	if value != "100" {
+		t.Fatalf("expected 100, got %q", value)
+	}
+}
+func TestStore_ConcurrentDecr(t *testing.T) {
+	c := New()
+	c.Set("Foo", "0", 0)
+
+	const workers = 100
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+
+			_, err := c.Decr("Foo")
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	value, ok := c.Get("Foo")
+	if !ok {
+		t.Fatal("expected Foo to exist")
+	}
+
+	if value != "-100" {
+		t.Fatalf("expected -100, got %q", value)
 	}
 }

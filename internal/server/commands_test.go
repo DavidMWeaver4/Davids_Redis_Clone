@@ -1,6 +1,8 @@
 package server
 
 import (
+	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -469,5 +471,181 @@ func TestCommands_Persist_AlreadyPersistent(t *testing.T) {
 	}
 	if response.Int != 0 {
 		t.Fatalf("expected 0 for already persistent key, got %d", response.Int)
+	}
+}
+func TestCommands_Incr_Success(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "20", 0)
+
+	response := incr(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 21 {
+		t.Fatalf("expected 21, got %d", response.Int)
+	}
+}
+
+func TestCommands_Incr_MissingKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := incr(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+}
+
+func TestCommands_Incr_NonInteger(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", 0)
+
+	response := incr(s, []string{"Foo"})
+
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
+	}
+
+	if response.Str != "ERR value is not an integer" {
+		t.Fatalf("unexpected error: %q", response.Str)
+	}
+}
+
+func TestCommands_Incr_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := [][]string{
+		{},
+		{"Foo", "Bar"},
+	}
+
+	for _, args := range tests {
+		response := incr(s, args)
+
+		if response.Type != protocol.Error {
+			t.Fatalf("expected Error, got %v", response.Type)
+		}
+	}
+}
+
+func TestCommands_Incr_Overflow(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", strconv.FormatInt(math.MaxInt64, 10), 0)
+
+	response := incr(s, []string{"Foo"})
+
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
+	}
+
+	if response.Str != "ERR increment would cause integer overflow" {
+		t.Fatalf("unexpected error: %q", response.Str)
+	}
+}
+func TestCommands_Decr_Success(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "20", 0)
+
+	response := decr(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 19 {
+		t.Fatalf("expected 19, got %d", response.Int)
+	}
+}
+
+func TestCommands_Decr_MissingKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := decr(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != -1 {
+		t.Fatalf("expected -1, got %d", response.Int)
+	}
+}
+
+func TestCommands_Decr_NonInteger(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", 0)
+
+	response := decr(s, []string{"Foo"})
+
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
+	}
+
+	if response.Str != "ERR value is not an integer" {
+		t.Fatalf("unexpected error: %q", response.Str)
+	}
+}
+
+func TestCommands_Decr_InvalidArgumentCount(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	tests := [][]string{
+		{},
+		{"Foo", "Bar"},
+	}
+
+	for _, args := range tests {
+		response := decr(s, args)
+
+		if response.Type != protocol.Error {
+			t.Fatalf("expected Error, got %v", response.Type)
+		}
+	}
+}
+
+func TestCommands_Decr_Underflow(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", strconv.FormatInt(math.MinInt64, 10), 0)
+
+	response := decr(s, []string{"Foo"})
+
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
+	}
+
+	if response.Str != "ERR decrement would cause integer overflow" {
+		t.Fatalf("unexpected error: %q", response.Str)
 	}
 }

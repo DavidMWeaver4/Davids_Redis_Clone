@@ -1,6 +1,9 @@
 package store
 
 import (
+	"errors"
+	"math"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -121,4 +124,48 @@ func (s *Store) Persist(key string) bool {
 	entry.ExpiresAt = time.Time{}
 	s.data[key] = entry
 	return true
+}
+
+func (s *Store) Incr(key string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok || isExpired(entry) {
+		s.data[key] = Entry{Value: "1"}
+		return 1, nil
+	}
+	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if err != nil {
+		return 0, errors.New("value is not an integer")
+	}
+	if value == math.MaxInt64 {
+		return 0, errors.New("increment would cause integer overflow")
+	}
+	value++
+	entry.Value = strconv.FormatInt(value, 10)
+	s.data[key] = entry
+	return value, nil
+}
+
+func (s *Store) Decr(key string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok || isExpired(entry) {
+		s.data[key] = Entry{Value: "-1"}
+		return -1, nil
+	}
+	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if err != nil {
+		return 0, errors.New("value is not an integer")
+	}
+	if value == math.MinInt64 {
+		return 0, errors.New("decrement would cause integer overflow")
+	}
+	value--
+	entry.Value = strconv.FormatInt(value, 10)
+	s.data[key] = entry
+	return value, nil
 }

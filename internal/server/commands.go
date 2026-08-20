@@ -19,6 +19,8 @@ var commandHandlers = map[string]commandHandler{
 	"TTL":     ttl,
 	"EXPIRE":  expire,
 	"PERSIST": persist,
+	"INCR":    incr,
+	"DECR":    decr,
 }
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
@@ -52,7 +54,7 @@ func ping(s *Server, args []string) protocol.Value {
 
 func set(s *Server, args []string) protocol.Value {
 	if len(args) != 2 && len(args) != 4 {
-		return protocol.NewError("ERR need 2 or 4 arguments for 'set'")
+		return protocol.NewError("ERR need 2 or 4 arguments for 'SET'")
 	}
 	var ttl time.Duration
 	key := args[0]
@@ -60,14 +62,14 @@ func set(s *Server, args []string) protocol.Value {
 	if len(args) == 4 {
 		ok := strings.EqualFold(args[2], "EX")
 		if !ok {
-			return protocol.NewError("ERR need EX as third argument in 'set'")
+			return protocol.NewError("ERR need EX as third argument in 'SET'")
 		}
 		seconds, err := strconv.Atoi(args[3])
 		if err != nil {
-			return protocol.NewError("ERR invalid expire time in 'set'")
+			return protocol.NewError("ERR invalid expire time in 'SET'")
 		}
 		if seconds <= 0 {
-			return protocol.NewError("ERR expire time must be positive in 'set'")
+			return protocol.NewError("ERR expire time must be positive in 'SET'")
 		}
 		ttl = time.Second * time.Duration(seconds)
 	}
@@ -77,7 +79,7 @@ func set(s *Server, args []string) protocol.Value {
 
 func get(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
-		return protocol.NewError("ERR need 1 argument for 'get'")
+		return protocol.NewError("ERR need 1 argument for 'GET'")
 	}
 	value, ok := s.store.Get(args[0])
 	if !ok {
@@ -88,7 +90,7 @@ func get(s *Server, args []string) protocol.Value {
 
 func deleteCommand(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
-		return protocol.NewError("ERR need 1 argument for 'del'")
+		return protocol.NewError("ERR need 1 argument for 'DEL'")
 	}
 	deleted := s.store.Delete(args[0])
 	return protocol.NewInteger(int64(deleted))
@@ -96,7 +98,7 @@ func deleteCommand(s *Server, args []string) protocol.Value {
 
 func exists(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
-		return protocol.NewError("ERR need 1 argument for 'exists'")
+		return protocol.NewError("ERR need 1 argument for 'EXISTS'")
 	}
 	if s.store.Exists(args[0]) {
 		return protocol.NewInteger(1)
@@ -106,7 +108,7 @@ func exists(s *Server, args []string) protocol.Value {
 
 func ttl(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
-		return protocol.NewError("ERR need 1 argument for 'ttl'")
+		return protocol.NewError("ERR need 1 argument for 'TTL'")
 	}
 	seconds := s.store.TTL(args[0])
 	return protocol.NewInteger(int64(seconds))
@@ -114,11 +116,11 @@ func ttl(s *Server, args []string) protocol.Value {
 
 func expire(s *Server, args []string) protocol.Value {
 	if len(args) != 2 {
-		return protocol.NewError("ERR need 2 arguments for 'expire'")
+		return protocol.NewError("ERR need 2 arguments for 'EXPIRE'")
 	}
 	seconds, err := strconv.Atoi(args[1])
 	if err != nil {
-		return protocol.NewError("ERR invalid expire time in 'expire'")
+		return protocol.NewError("ERR invalid expire time in 'EXPIRE'")
 	}
 	if seconds <= 0 {
 		return protocol.NewError("ERR expire time must be positive number")
@@ -131,10 +133,32 @@ func expire(s *Server, args []string) protocol.Value {
 
 func persist(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
-		return protocol.NewError("ERR need 1 arguments for 'persist'")
+		return protocol.NewError("ERR need 1 argument for 'PERSIST'")
 	}
 	if !s.store.Persist(args[0]) {
 		return protocol.NewInteger(0)
 	}
 	return protocol.NewInteger(1)
+}
+
+func incr(s *Server, args []string) protocol.Value {
+	if len(args) != 1 {
+		return protocol.NewError("ERR need 1 argument for 'INCR'")
+	}
+	newValue, err := s.store.Incr(args[0])
+	if err != nil {
+		return protocol.NewError("ERR " + err.Error())
+	}
+	return protocol.NewInteger(newValue)
+}
+
+func decr(s *Server, args []string) protocol.Value {
+	if len(args) != 1 {
+		return protocol.NewError("ERR need 1 argument for 'DECR'")
+	}
+	newValue, err := s.store.Decr(args[0])
+	if err != nil {
+		return protocol.NewError("ERR " + err.Error())
+	}
+	return protocol.NewInteger(newValue)
 }
