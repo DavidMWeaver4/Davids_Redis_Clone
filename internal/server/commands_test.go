@@ -166,17 +166,10 @@ func TestCommands_Del_InvalidArgumentCount(t *testing.T) {
 		store: store.New(),
 	}
 
-	tests := [][]string{
-		{},
-		{"Foo", "Bar"},
-	}
+	response := deleteCommand(s, []string{})
 
-	for _, args := range tests {
-		response := deleteCommand(s, args)
-
-		if response.Type != protocol.Error {
-			t.Fatalf("expected Error, got %v", response.Type)
-		}
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
 	}
 }
 
@@ -219,16 +212,53 @@ func TestCommands_Exists_InvalidArgumentCount(t *testing.T) {
 		store: store.New(),
 	}
 
-	tests := [][]string{
-		{},
-		{"Foo", "Bar"},
+	response := exists(s, []string{})
+
+	if response.Type != protocol.Error {
+		t.Fatalf("expected Error, got %v", response.Type)
+	}
+}
+func TestCommands_Del_MultipleKeys(t *testing.T) {
+	s := &Server{
+		store: store.New(),
 	}
 
-	for _, args := range tests {
-		response := exists(s, args)
+	s.store.Set("Foo", "Bar", 0)
+	s.store.Set("Baz", "Qux", 0)
 
-		if response.Type != protocol.Error {
-			t.Fatalf("expected Error, got %v", response.Type)
-		}
+	response := deleteCommand(s, []string{"Foo", "Baz", "Missing"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 2 {
+		t.Fatalf("expected 2, got %d", response.Int)
+	}
+
+	if _, ok := s.store.Get("Foo"); ok {
+		t.Fatal("expected Foo to be deleted")
+	}
+
+	if _, ok := s.store.Get("Baz"); ok {
+		t.Fatal("expected Baz to be deleted")
+	}
+}
+func TestCommands_Exists_MultipleKeys(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", 0)
+	s.store.Set("Baz", "Qux", 0)
+
+	response := exists(s, []string{"Foo", "Baz", "Missing"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 2 {
+		t.Fatalf("expected 2, got %d", response.Int)
 	}
 }

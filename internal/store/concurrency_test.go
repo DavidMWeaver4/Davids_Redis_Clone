@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 )
@@ -178,4 +179,24 @@ func TestStore_Decrby_Concurrent(t *testing.T) {
 	if value != "-500" {
 		t.Fatalf("expected -500, got %q", value)
 	}
+}
+func TestStore_ConcurrentAccess(t *testing.T) {
+	s := New()
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+
+		go func(i int) {
+			defer wg.Done()
+
+			s.Set("Foo", strconv.Itoa(i), 0)
+			s.Get("Foo")
+			s.Exists("Foo")
+			s.Strlen("Foo")
+		}(i)
+	}
+
+	wg.Wait()
 }

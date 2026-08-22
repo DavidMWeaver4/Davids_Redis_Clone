@@ -16,6 +16,10 @@ type Entry struct {
 	Value     string
 	ExpiresAt time.Time
 }
+type KeyValue struct {
+	Key   string
+	Value string
+}
 
 var (
 	ErrNotIntegerOrOutOfRange = errors.New("value is not an integer or out of range")
@@ -205,4 +209,57 @@ func (s *Store) Decrby(key string, dec int64) (int64, error) {
 		return 0, ErrNegativeDecrement
 	}
 	return s.Incrby(key, -dec)
+}
+
+func (s *Store) Append(key, value string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok || isExpired(entry) {
+		s.data[key] = Entry{Value: value}
+		return len(value)
+	}
+	entry.Value += value
+	s.data[key] = entry
+	return len(entry.Value)
+
+}
+
+func (s *Store) Strlen(key string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok {
+		return 0
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
+		return 0
+	}
+	return len(entry.Value)
+}
+
+func (s *Store) Setnx(key, value string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if ok && !isExpired(entry) {
+		return false
+	}
+
+	s.data[key] = Entry{Value: value}
+	return true
+}
+
+func (s *Store) Mset(pairs []KeyValue) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, pair := range pairs {
+		s.data[pair.Key] = Entry{Value: pair.Value}
+	}
+
 }

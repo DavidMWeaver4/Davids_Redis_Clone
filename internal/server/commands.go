@@ -24,6 +24,11 @@ var commandHandlers = map[string]commandHandler{
 	"INCR":    incr,
 	"DECR":    decr,
 	"INCRBY":  incrby,
+	"APPEND":  appendCommand,
+	"STRLEN":  strlen,
+	"SETNX":   setnx,
+	"MGET":    mget,
+	"MSET":    mset,
 }
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
@@ -92,21 +97,27 @@ func get(s *Server, args []string) protocol.Value {
 }
 
 func deleteCommand(s *Server, args []string) protocol.Value {
-	if len(args) != 1 {
-		return protocol.NewError("need 1 argument for 'DEL'")
+	if len(args) < 1 {
+		return protocol.NewError("need at least 1 argument for 'DEL'")
 	}
-	deleted := s.store.Delete(args[0])
+	deleted := 0
+	for _, key := range args {
+		deleted += s.store.Delete(key)
+	}
 	return protocol.NewInteger(int64(deleted))
 }
 
 func exists(s *Server, args []string) protocol.Value {
-	if len(args) != 1 {
-		return protocol.NewError("need 1 argument for 'EXISTS'")
+	if len(args) < 1 {
+		return protocol.NewError("need at least 1 argument for 'EXISTS'")
 	}
-	if s.store.Exists(args[0]) {
-		return protocol.NewInteger(1)
+	count := 0
+	for _, key := range args {
+		if s.store.Exists(key) {
+			count++
+		}
 	}
-	return protocol.NewInteger(0)
+	return protocol.NewInteger(int64(count))
 }
 
 func ttl(s *Server, args []string) protocol.Value {
@@ -200,4 +211,59 @@ func decrby(s *Server, args []string) protocol.Value {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewInteger(newValue)
+}
+
+func appendCommand(s *Server, args []string) protocol.Value {
+	if len(args) != 2 {
+		return protocol.NewError("need 2 arguments for 'APPEND'")
+	}
+	strlen := s.store.Append(args[0], args[1])
+	return protocol.NewInteger(int64(strlen))
+}
+func strlen(s *Server, args []string) protocol.Value {
+	if len(args) != 1 {
+		return protocol.NewError("need 1 argument for 'STRLEN'")
+	}
+	strlen := s.store.Strlen(args[0])
+	return protocol.NewInteger(int64(strlen))
+}
+func setnx(s *Server, args []string) protocol.Value {
+	if len(args) != 2 {
+		return protocol.NewError("need 2 arguments for 'SETNX'")
+	}
+	ok := s.store.Setnx(args[0], args[1])
+	if !ok {
+		return protocol.NewInteger(0)
+	}
+	return protocol.NewInteger(1)
+}
+func mget(s *Server, args []string) protocol.Value {
+	if len(args) < 1 {
+		return protocol.NewError("need at least 1 argument for 'MGET'")
+	}
+	getResults := make([]protocol.Value, 0, len(args))
+	for _, key := range args {
+		value, found := s.store.Get(key)
+		if !found {
+			getResults = append(getResults, protocol.NewNullBulkString())
+			continue
+		}
+		getResults = append(getResults, protocol.NewBulkString(value))
+	}
+	return protocol.NewArray(getResults)
+}
+
+func mset(s *Server, args []string) protocol.Value {
+	if len(args) < 2 || len(args)%2 != 0 {
+		return protocol.NewError("need at least 2 or even amount of arguments for 'MSET'")
+	}
+	pairs := make([]store.KeyValue, 0, len(args)/2)
+	for i := 0; i < len(args); i += 2 {
+		pairs = append(pairs, store.KeyValue{
+			Key:   args[i],
+			Value: args[i+1],
+		})
+	}
+	s.store.Mset(pairs)
+	return protocol.NewSimpleString("OK")
 }
