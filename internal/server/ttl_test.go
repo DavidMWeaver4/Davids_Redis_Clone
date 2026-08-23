@@ -20,7 +20,10 @@ func TestCommands_SetWithTTL_Success(t *testing.T) {
 	if response.Str != "OK" {
 		t.Fatalf("expected OK, got %q", response.Str)
 	}
-	value, ok := s.store.Get("Foo")
+	value, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
@@ -109,7 +112,7 @@ func TestCommands_TTL_MissingKey(t *testing.T) {
 		t.Fatalf("expected -2, got %d", response.Int)
 	}
 }
-func TestCommands_TTL_InvaludArgumentCount(t *testing.T) {
+func TestCommands_TTL_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
@@ -180,20 +183,70 @@ func TestCommands_Expire_NegativeExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+
 	s.store.Set("Foo", "Bar", 0)
+
 	response := expire(s, []string{"Foo", "-100"})
-	if response.Type != protocol.Error {
-		t.Fatalf("expected error, got %v", response.Type)
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+
+	_, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ok {
+		t.Fatal("expected key to be deleted")
 	}
 }
 func TestCommands_Expire_ZeroExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+
 	s.store.Set("Foo", "Bar", 0)
+
 	response := expire(s, []string{"Foo", "0"})
-	if response.Type != protocol.Error {
-		t.Fatalf("expected error, got %v", response.Type)
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+
+	_, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if ok {
+		t.Fatal("expected key to be deleted")
+	}
+}
+func TestCommands_Expire_ExpiredKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
+
+	response := expire(s, []string{"Foo", "10"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 0 {
+		t.Fatalf("expected 0 for expired key, got %d", response.Int)
 	}
 }
 
@@ -252,5 +305,23 @@ func TestCommands_Persist_AlreadyPersistent(t *testing.T) {
 	}
 	if response.Int != 0 {
 		t.Fatalf("expected 0 for already persistent key, got %d", response.Int)
+	}
+}
+func TestCommands_Persist_ExpiredKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
+
+	response := persist(s, []string{"Foo"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 0 {
+		t.Fatalf("expected 0 for expired key, got %d", response.Int)
 	}
 }

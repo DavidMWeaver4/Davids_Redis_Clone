@@ -12,10 +12,21 @@ type Store struct {
 	mu   sync.RWMutex
 	data map[string]Entry
 }
+type ValueType int
+
+const (
+	InvalidType ValueType = iota
+	StringType
+	ListType
+)
+
 type Entry struct {
-	Value     string
+	Type      ValueType
+	String    string
+	List      []string
 	ExpiresAt time.Time
 }
+
 type KeyValue struct {
 	Key   string
 	Value string
@@ -24,6 +35,7 @@ type KeyValue struct {
 var (
 	ErrNotIntegerOrOutOfRange = errors.New("value is not an integer or out of range")
 	ErrNegativeDecrement      = errors.New("decrement must be non-negative")
+	ErrWrongType              = errors.New("WRONGTYPE operation against a key holding the wrong kind of value")
 )
 
 func New() *Store {
@@ -35,26 +47,32 @@ func New() *Store {
 func (s *Store) Set(key, value string, ttl time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry := Entry{Value: value}
+	entry := Entry{
+		Type:   StringType,
+		String: value,
+	}
 	if ttl > 0 {
 		entry.ExpiresAt = time.Now().Add(ttl)
 	}
 	s.data[key] = entry
 }
 
-func (s *Store) Get(key string) (string, bool) {
+func (s *Store) Get(key string) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry, ok := s.data[key]
 	if !ok {
-		return "", false
+		return "", false, nil
 	}
 	if isExpired(entry) {
 		delete(s.data, key)
-		return "", false
+		return "", false, nil
 	}
-	return entry.Value, true
+	if entry.Type != StringType {
+		return "", false, ErrWrongType
+	}
+	return entry.String, true, nil
 }
 
 func (s *Store) Delete(key string) int {
@@ -73,8 +91,18 @@ func (s *Store) Delete(key string) int {
 }
 
 func (s *Store) Exists(key string) bool {
-	_, ok := s.Get(key)
-	return ok
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if !ok {
+		return false
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
+		return false
+	}
+	return true
 }
 
 func (s *Store) TTL(key string) int {
@@ -110,6 +138,11 @@ func (s *Store) Expire(key string, ttl time.Duration) bool {
 		delete(s.data, key)
 		return false
 	}
+	if ttl <= 0 {
+		delete(s.data, key)
+		return true
+	}
+
 	entry.ExpiresAt = time.Now().Add(ttl)
 	s.data[key] = entry
 	return true
@@ -141,10 +174,16 @@ func (s *Store) Incr(key string) (int64, error) {
 
 	entry, ok := s.data[key]
 	if !ok || isExpired(entry) {
-		s.data[key] = Entry{Value: "1"}
+		s.data[key] = Entry{
+			Type:   StringType,
+			String: "1",
+		}
 		return 1, nil
 	}
-	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if entry.Type != StringType {
+		return 0, ErrWrongType
+	}
+	value, err := strconv.ParseInt(entry.String, 10, 64)
 	if err != nil {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
@@ -152,7 +191,7 @@ func (s *Store) Incr(key string) (int64, error) {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
 	value++
-	entry.Value = strconv.FormatInt(value, 10)
+	entry.String = strconv.FormatInt(value, 10)
 	s.data[key] = entry
 	return value, nil
 }
@@ -163,10 +202,16 @@ func (s *Store) Decr(key string) (int64, error) {
 
 	entry, ok := s.data[key]
 	if !ok || isExpired(entry) {
-		s.data[key] = Entry{Value: "-1"}
+		s.data[key] = Entry{
+			Type:   StringType,
+			String: "-1",
+		}
 		return -1, nil
 	}
-	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if entry.Type != StringType {
+		return 0, ErrWrongType
+	}
+	value, err := strconv.ParseInt(entry.String, 10, 64)
 	if err != nil {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
@@ -174,7 +219,7 @@ func (s *Store) Decr(key string) (int64, error) {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
 	value--
-	entry.Value = strconv.FormatInt(value, 10)
+	entry.String = strconv.FormatInt(value, 10)
 	s.data[key] = entry
 	return value, nil
 }
@@ -185,10 +230,16 @@ func (s *Store) Incrby(key string, inc int64) (int64, error) {
 
 	entry, ok := s.data[key]
 	if !ok || isExpired(entry) {
-		s.data[key] = Entry{Value: strconv.FormatInt(inc, 10)}
+		s.data[key] = Entry{
+			Type:   StringType,
+			String: strconv.FormatInt(inc, 10),
+		}
 		return inc, nil
 	}
-	value, err := strconv.ParseInt(entry.Value, 10, 64)
+	if entry.Type != StringType {
+		return 0, ErrWrongType
+	}
+	value, err := strconv.ParseInt(entry.String, 10, 64)
 	if err != nil {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
@@ -199,7 +250,7 @@ func (s *Store) Incrby(key string, inc int64) (int64, error) {
 		return 0, ErrNotIntegerOrOutOfRange
 	}
 	value += inc
-	entry.Value = strconv.FormatInt(value, 10)
+	entry.String = strconv.FormatInt(value, 10)
 	s.data[key] = entry
 	return value, nil
 }
@@ -211,55 +262,75 @@ func (s *Store) Decrby(key string, dec int64) (int64, error) {
 	return s.Incrby(key, -dec)
 }
 
-func (s *Store) Append(key, value string) int {
+func (s *Store) Append(key, value string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
-		s.data[key] = Entry{Value: value}
-		return len(value)
+	if ok && isExpired(entry) {
+		delete(s.data, key)
+		ok = false
 	}
-	entry.Value += value
+	if !ok {
+		s.data[key] = Entry{
+			Type:   StringType,
+			String: value,
+		}
+		return len(value), nil
+	}
+	if entry.Type != StringType {
+		return 0, ErrWrongType
+	}
+	entry.String += value
 	s.data[key] = entry
-	return len(entry.Value)
-
+	return len(entry.String), nil
 }
 
-func (s *Store) Strlen(key string) int {
+func (s *Store) Strlen(key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry, ok := s.data[key]
 	if !ok {
-		return 0
+		return 0, nil
 	}
 	if isExpired(entry) {
 		delete(s.data, key)
-		return 0
+		return 0, nil
 	}
-	return len(entry.Value)
+	if entry.Type != StringType {
+		return 0, ErrWrongType
+	}
+	return len(entry.String), nil
 }
 
-func (s *Store) Setnx(key, value string) bool {
+func (s *Store) Setnx(key, value string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry, ok := s.data[key]
-	if ok && !isExpired(entry) {
-		return false
+	if !ok || isExpired(entry) {
+		s.data[key] = Entry{
+			Type:   StringType,
+			String: value,
+		}
+		return true, nil
+	}
+	if entry.Type != StringType {
+		return false, ErrWrongType
 	}
 
-	s.data[key] = Entry{Value: value}
-	return true
+	return false, nil
 }
 
 func (s *Store) Mset(pairs []KeyValue) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	for _, pair := range pairs {
-		s.data[pair.Key] = Entry{Value: pair.Value}
+		s.data[pair.Key] = Entry{
+			Type:   StringType,
+			String: pair.Value,
+		}
 	}
 
 }

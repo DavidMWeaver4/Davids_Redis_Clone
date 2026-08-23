@@ -2,6 +2,7 @@ package server
 
 import (
 	"testing"
+	"time"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
@@ -24,7 +25,10 @@ func TestCommands_Append_Success(t *testing.T) {
 		t.Fatalf("expected 6, got %d", response.Int)
 	}
 
-	value, ok := s.store.Get("Foo")
+	value, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
@@ -154,7 +158,10 @@ func TestCommands_Setnx_ExistingKey(t *testing.T) {
 		t.Fatalf("expected 0, got %d", response.Int)
 	}
 
-	value, _ := s.store.Get("Foo")
+	value, _, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
 	if value != "Bar" {
 		t.Fatalf("expected original value %q, got %q", "Bar", value)
 	}
@@ -241,12 +248,18 @@ func TestCommands_Mset_Success(t *testing.T) {
 		t.Fatalf("expected OK, got %q", response.Str)
 	}
 
-	foo, ok := s.store.Get("Foo")
+	foo, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
 	if !ok || foo != "Bar" {
 		t.Fatalf("expected Foo=Bar, got %q", foo)
 	}
 
-	baz, ok := s.store.Get("Baz")
+	baz, ok, err := s.store.Get("Baz")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
 	if !ok || baz != "Qux" {
 		t.Fatalf("expected Baz=Qux, got %q", baz)
 	}
@@ -269,5 +282,63 @@ func TestCommands_Mset_InvalidArgumentCount(t *testing.T) {
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
 		}
+	}
+}
+func TestCommands_Append_PreservesTTL(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", 5*time.Second)
+
+	response := appendCommand(s, []string{"Foo", "Baz"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	ttl := s.store.TTL("Foo")
+	if ttl < 4 || ttl > 5 {
+		t.Fatalf("expected TTL around 5, got %d", ttl)
+	}
+
+	value, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+	if value != "BarBaz" {
+		t.Fatalf("expected %q, got %q", "BarBaz", value)
+	}
+}
+func TestCommands_Setnx_ExpiredKey(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	s.store.Set("Foo", "Bar", 10*time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+
+	response := setnx(s, []string{"Foo", "Baz"})
+
+	if response.Type != protocol.Integer {
+		t.Fatalf("expected Integer, got %v", response.Type)
+	}
+
+	if response.Int != 1 {
+		t.Fatalf("expected 1, got %d", response.Int)
+	}
+
+	value, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected key to exist")
+	}
+	if value != "Baz" {
+		t.Fatalf("expected %q, got %q", "Baz", value)
 	}
 }

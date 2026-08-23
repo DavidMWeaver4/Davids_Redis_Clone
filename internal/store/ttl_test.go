@@ -8,12 +8,18 @@ import (
 func TestStore_SetWithTTL(t *testing.T) {
 	c := New()
 	c.Set("Foo", "Bar", 50*time.Millisecond)
-	_, ok := c.Get("Foo")
+	_, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected stored value to still exist")
 	}
 	time.Sleep(75 * time.Millisecond)
-	_, ok = c.Get("Foo")
+	_, ok, err = c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if ok {
 		t.Fatal("expected key to expire")
 	}
@@ -23,7 +29,10 @@ func TestStore_GetExpiredKey(t *testing.T) {
 	c := New()
 	c.Set("Foo", "Bar", 1*time.Millisecond)
 	time.Sleep(10 * time.Millisecond)
-	_, ok := c.Get("Foo")
+	_, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if ok {
 		t.Fatal("expected store value to be deleted")
 	}
@@ -33,7 +42,10 @@ func TestStore_ExpiredKeyIsDeleted(t *testing.T) {
 	c := New()
 	c.Set("Foo", "Bar", 10*time.Millisecond)
 	time.Sleep(20 * time.Millisecond)
-	_, ok := c.Get("Foo")
+	_, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if ok {
 		t.Fatal("expected expired key to be unavailable")
 	}
@@ -196,7 +208,10 @@ func TestStore_Persist_CheckAfterOriginalExpirationTime(t *testing.T) {
 		t.Fatal("expected persist to succeed")
 	}
 	time.Sleep(20 * time.Millisecond)
-	value, exists := c.Get("Foo")
+	value, exists, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !exists || value != "Bar" {
 		t.Fatal("expected persisted key to remain after original expiration time")
 	}

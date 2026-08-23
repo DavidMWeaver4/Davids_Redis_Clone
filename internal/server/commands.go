@@ -89,7 +89,10 @@ func get(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'GET'")
 	}
-	value, ok := s.store.Get(args[0])
+	value, ok, err := s.store.Get(args[0])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
 	if !ok {
 		return protocol.NewNullBulkString()
 	}
@@ -132,17 +135,15 @@ func expire(s *Server, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'EXPIRE'")
 	}
-	seconds, err := strconv.Atoi(args[1])
+	seconds, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
 		return protocol.NewError("invalid expire time in 'EXPIRE'")
 	}
-	if seconds <= 0 {
-		return protocol.NewError("expire time must be positive number")
+
+	if s.store.Expire(args[0], time.Duration(seconds)*time.Second) {
+		return protocol.NewInteger(1)
 	}
-	if !s.store.Expire(args[0], time.Duration(seconds)*time.Second) {
-		return protocol.NewInteger(0)
-	}
-	return protocol.NewInteger(1)
+	return protocol.NewInteger(0)
 }
 
 func persist(s *Server, args []string) protocol.Value {
@@ -217,21 +218,30 @@ func appendCommand(s *Server, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'APPEND'")
 	}
-	strlen := s.store.Append(args[0], args[1])
+	strlen, err := s.store.Append(args[0], args[1])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
 	return protocol.NewInteger(int64(strlen))
 }
 func strlen(s *Server, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'STRLEN'")
 	}
-	strlen := s.store.Strlen(args[0])
+	strlen, err := s.store.Strlen(args[0])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
 	return protocol.NewInteger(int64(strlen))
 }
 func setnx(s *Server, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'SETNX'")
 	}
-	ok := s.store.Setnx(args[0], args[1])
+	ok, err := s.store.Setnx(args[0], args[1])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
 	if !ok {
 		return protocol.NewInteger(0)
 	}
@@ -243,7 +253,10 @@ func mget(s *Server, args []string) protocol.Value {
 	}
 	getResults := make([]protocol.Value, 0, len(args))
 	for _, key := range args {
-		value, found := s.store.Get(key)
+		value, found, err := s.store.Get(key)
+		if err != nil {
+			return protocol.NewError(err.Error())
+		}
 		if !found {
 			getResults = append(getResults, protocol.NewNullBulkString())
 			continue

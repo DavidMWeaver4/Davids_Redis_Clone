@@ -32,7 +32,10 @@ func TestCommands_Set_Success(t *testing.T) {
 	if response.Str != "OK" {
 		t.Fatalf("expected OK, got %q", response.Str)
 	}
-	value, ok := s.store.Get("Foo")
+	value, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist after SET")
 	}
@@ -139,7 +142,10 @@ func TestCommands_Del_Success(t *testing.T) {
 		t.Fatalf("expected 1, got %d", response.Int)
 	}
 
-	_, ok := s.store.Get("Foo")
+	_, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if ok {
 		t.Fatal("expected key to be deleted")
 	}
@@ -236,11 +242,19 @@ func TestCommands_Del_MultipleKeys(t *testing.T) {
 		t.Fatalf("expected 2, got %d", response.Int)
 	}
 
-	if _, ok := s.store.Get("Foo"); ok {
+	_, ok, err := s.store.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
 		t.Fatal("expected Foo to be deleted")
 	}
 
-	if _, ok := s.store.Get("Baz"); ok {
+	_, ok, err = s.store.Get("Baz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
 		t.Fatal("expected Baz to be deleted")
 	}
 }
@@ -260,5 +274,27 @@ func TestCommands_Exists_MultipleKeys(t *testing.T) {
 
 	if response.Int != 2 {
 		t.Fatalf("expected 2, got %d", response.Int)
+	}
+}
+
+func TestCommands_Set_WithExpiration(t *testing.T) {
+	s := &Server{
+		store: store.New(),
+	}
+
+	response := set(s, []string{"Foo", "Bar", "EX", "10"})
+
+	if response.Type != protocol.SimpleString {
+		t.Fatalf("expected SimpleString, got %v", response.Type)
+	}
+
+	if response.Str != "OK" {
+		t.Fatalf("expected OK, got %q", response.Str)
+	}
+
+	ttl := s.store.TTL("Foo")
+
+	if ttl <= 0 {
+		t.Fatalf("expected positive TTL, got %d", ttl)
 	}
 }

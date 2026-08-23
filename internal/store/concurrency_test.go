@@ -21,7 +21,10 @@ func TestStore_ConcurrentSetAndGet(t *testing.T) {
 			key := fmt.Sprintf("key-%d", i)
 			value := fmt.Sprintf("value-%d", i)
 			c.Set(key, value, 0)
-			got, ok := c.Get(key)
+			got, ok, err := c.Get(key)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if !ok {
 				t.Errorf("worker %d: key missing", i)
 				return
@@ -49,7 +52,10 @@ func TestStore_ConcurrentSetSameKey(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	got, ok := c.Get("shared")
+	got, ok, err := c.Get("shared")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected shared key to exist")
 	}
@@ -80,7 +86,10 @@ func TestStore_Incr_Concurrent(t *testing.T) {
 
 	wg.Wait()
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -110,7 +119,10 @@ func TestStore_Decr_Concurrent(t *testing.T) {
 
 	wg.Wait()
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -140,7 +152,10 @@ func TestStore_Incrby_Concurrent(t *testing.T) {
 
 	wg.Wait()
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -171,7 +186,10 @@ func TestStore_Decrby_Concurrent(t *testing.T) {
 
 	wg.Wait()
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}

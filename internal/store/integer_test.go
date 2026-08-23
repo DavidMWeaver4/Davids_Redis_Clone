@@ -21,7 +21,10 @@ func TestStore_Incr_Success(t *testing.T) {
 		t.Fatalf("expected 21, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
@@ -61,7 +64,10 @@ func TestStore_Incr_MissingKey(t *testing.T) {
 		t.Fatalf("expected 1, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
@@ -148,7 +154,10 @@ func TestStore_Decr_Success(t *testing.T) {
 		t.Fatalf("expected 19, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
@@ -272,7 +281,10 @@ func TestStore_Incrby_MissingKey(t *testing.T) {
 		t.Fatalf("expected 5, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -295,7 +307,10 @@ func TestStore_Incrby_ExistingInteger(t *testing.T) {
 		t.Fatalf("expected 25, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -376,7 +391,10 @@ func TestStore_Incrby_ExpiredKey(t *testing.T) {
 		t.Fatalf("expected 5, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -410,7 +428,10 @@ func TestStore_Decrby_MissingKey(t *testing.T) {
 		t.Fatalf("expected -5, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -433,7 +454,10 @@ func TestStore_Decrby_ExistingInteger(t *testing.T) {
 		t.Fatalf("expected 15, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -513,7 +537,10 @@ func TestStore_Decrby_ExpiredKey(t *testing.T) {
 		t.Fatalf("expected -5, got %d", got)
 	}
 
-	value, ok := c.Get("Foo")
+	value, ok, err := c.Get("Foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected Foo to exist")
 	}
@@ -546,5 +573,19 @@ func TestStore_Decrby_MinInt64(t *testing.T) {
 
 	if got != math.MinInt64 {
 		t.Fatalf("expected %d, got %d", int64(math.MinInt64), got)
+	}
+}
+func TestStore_Incr_WrongType(t *testing.T) {
+	s := New()
+
+	s.data["Foo"] = Entry{
+		Type: ListType,
+		List: []string{"Bar"},
+	}
+
+	_, err := s.Incr("Foo")
+
+	if err != ErrWrongType {
+		t.Fatalf("expected ErrWrongType, got %v", err)
 	}
 }

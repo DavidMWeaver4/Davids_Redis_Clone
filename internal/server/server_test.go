@@ -258,7 +258,10 @@ func TestServer_HandleClient_SetWithTTL(t *testing.T) {
 		t.Fatalf("expected +OK\\r\\n, got %q", got)
 	}
 
-	value, ok := server.store.Get("foo")
+	value, ok, err := server.store.Get("foo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !ok {
 		t.Fatal("expected key to exist")
 	}
