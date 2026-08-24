@@ -23,7 +23,7 @@ func TestStore_ConcurrentSetAndGet(t *testing.T) {
 			c.Set(key, value, 0)
 			got, ok, err := c.Get(key)
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 			if !ok {
 				t.Errorf("worker %d: key missing", i)

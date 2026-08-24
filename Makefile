@@ -1,4 +1,4 @@
-.PHONY: run build fmt vet test test-race test-race-cover clean check
+.PHONY: run build fmt vet staticcheck test test-race test-race-cover clean check
 
 run:
 	go run ./cmd/server
@@ -11,6 +11,9 @@ fmt:
 
 vet:
 	go vet ./...
+
+staticcheck:
+	staticcheck ./...
 
 test:
 	go test ./...
@@ -25,4 +28,4 @@ test-race-cover:
 clean:
 	rm -rf bin coverage.out
 
-check: fmt vet test-race
+check: fmt vet staticcheck test-race
