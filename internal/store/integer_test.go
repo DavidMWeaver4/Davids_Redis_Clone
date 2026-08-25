@@ -580,7 +580,9 @@ func TestStore_Incr_WrongType(t *testing.T) {
 
 	s.data["Foo"] = Entry{
 		Type: ListType,
-		List: []string{"Bar"},
+		List: List{
+			values: []string{"Bar"},
+		},
 	}
 
 	_, err := s.Incr("Foo")

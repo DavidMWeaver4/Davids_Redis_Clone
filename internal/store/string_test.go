@@ -282,7 +282,9 @@ func TestStore_Get_WrongType(t *testing.T) {
 
 	s.data["Foo"] = Entry{
 		Type: ListType,
-		List: []string{"Bar"},
+		List: List{
+			values: []string{"Bar"},
+		},
 	}
 
 	_, _, err := s.Get("Foo")
@@ -296,7 +298,9 @@ func TestStore_Append_WrongType(t *testing.T) {
 
 	s.data["Foo"] = Entry{
 		Type: ListType,
-		List: []string{"Bar"},
+		List: List{
+			values: []string{"Bar"},
+		},
 	}
 
 	_, err := s.Append("Foo", "Baz")
@@ -310,7 +314,9 @@ func TestStore_Strlen_WrongType(t *testing.T) {
 
 	s.data["Foo"] = Entry{
 		Type: ListType,
-		List: []string{"Bar"},
+		List: List{
+			values: []string{"Bar"},
+		},
 	}
 
 	_, err := s.Strlen("Foo")
@@ -324,7 +330,9 @@ func TestStore_Setnx_WrongType(t *testing.T) {
 
 	s.data["Foo"] = Entry{
 		Type: ListType,
-		List: []string{"Bar"},
+		List: List{
+			values: []string{"Bar"},
+		},
 	}
 
 	_, err := s.Setnx("Foo", "Baz")

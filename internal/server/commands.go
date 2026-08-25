@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
@@ -25,7 +26,19 @@ var commandHandlers = map[string]commandHandler{
 	"SETNX":   setnx,
 	"MGET":    mget,
 	"MSET":    mset,
+	"LPUSH":   lpush,
+	"RPUSH":   rpush,
+	"LPOP":    lpop,
+	"RPOP":    rpop,
+	"LLEN":    llen,
+	"LRANGE":  lrange,
+	"LINDEX":  lindex,
+	"LSET":    lset,
+	"LTRIM":   ltrim,
 }
+var (
+	ErrInvalidInteger = errors.New("invalid integer entered")
+)
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
 	if command.Type != protocol.Array {

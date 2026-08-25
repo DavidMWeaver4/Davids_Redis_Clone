@@ -20,8 +20,12 @@ const (
 type Entry struct {
 	Type      ValueType
 	String    string
-	List      []string
+	List      List
 	ExpiresAt time.Time
+}
+
+type List struct {
+	values []string
 }
 
 type KeyValue struct {
