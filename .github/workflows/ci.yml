@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  style:
-    name: Style
+  format:
+    name: Format
     runs-on: ubuntu-latest
 
     steps:
@@ -19,9 +19,103 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.6"
+          cache: true
+
+      - name: Check formatting
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then
+            echo "The following files are not formatted:"
+            echo "$files"
+            exit 1
+          fi
+  vet:
+    name: VET
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Check out code
+          uses: actions/checkout@v5
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: "1.25.6"
+            cache: true
+
+        - name: Run vet
+          run: go vet ./...
+
+  staticcheck:
+    name: staticcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.6"
+          cache: true
 
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+        run: go install honnef.co/go/tools/cmd/staticcheck@2026.1
 
       - name: Run staticcheck
         run: staticcheck ./...
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.6"
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+  test:
+      name: Tests
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Check out code
+          uses: actions/checkout@v5
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: "1.25.6"
+            cache: true
+
+        - name: Run tests
+          run: go test ./...
+
+  race:
+      name: Race Tests
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Check out code
+          uses: actions/checkout@v5
+
+        - name: Set up Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: "1.25.6"
+            cache: true
+
+        - name: Run race tests
+          run: go test -race -coverprofile=coverage.out ./...
+
+        - name: Show coverage
+          run: go tool cover -func=coverage.out

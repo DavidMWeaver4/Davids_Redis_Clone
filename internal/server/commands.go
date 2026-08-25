@@ -21,6 +21,7 @@ var commandHandlers = map[string]commandHandler{
 	"INCR":    incr,
 	"DECR":    decr,
 	"INCRBY":  incrby,
+	"DECRBY":  decrby,
 	"APPEND":  appendCommand,
 	"STRLEN":  strlen,
 	"SETNX":   setnx,
