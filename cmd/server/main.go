@@ -9,7 +9,10 @@ import (
 
 func main() {
 	s := store.New()
+	defer s.Close()
 	srv := server.New(":6379", s)
-
-	log.Fatal(srv.ListenAndServe())
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.Print(err)
+	}
 }

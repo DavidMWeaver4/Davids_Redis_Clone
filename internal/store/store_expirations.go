@@ -1,6 +1,9 @@
 package store
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 func (s *Store) TTL(key string) int {
 	s.mu.Lock()
@@ -63,4 +66,29 @@ func (s *Store) Persist(key string) bool {
 	entry.ExpiresAt = time.Time{}
 	s.data[key] = entry
 	return true
+}
+
+func (s *Store) expirationLoop(ctx context.Context) {
+	defer s.wg.Done()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.deleteExpired()
+		}
+	}
+}
+func (s *Store) deleteExpired() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for key, entry := range s.data {
+		if isExpired(entry) {
+			delete(s.data, key)
+		}
+	}
 }

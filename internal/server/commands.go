@@ -10,32 +10,44 @@ import (
 type commandHandler func(*Server, []string) protocol.Value
 
 var commandHandlers = map[string]commandHandler{
-	"PING":    ping,
-	"SET":     set,
-	"GET":     get,
-	"DEL":     deleteCommand,
-	"EXISTS":  exists,
+	//Core
+	"PING":   ping,
+	"SET":    set,
+	"GET":    get,
+	"DEL":    deleteCommand,
+	"EXISTS": exists,
+	//Expiration
 	"TTL":     ttl,
 	"EXPIRE":  expire,
 	"PERSIST": persist,
-	"INCR":    incr,
-	"DECR":    decr,
-	"INCRBY":  incrby,
-	"DECRBY":  decrby,
-	"APPEND":  appendCommand,
-	"STRLEN":  strlen,
-	"SETNX":   setnx,
-	"MGET":    mget,
-	"MSET":    mset,
-	"LPUSH":   lpush,
-	"RPUSH":   rpush,
-	"LPOP":    lpop,
-	"RPOP":    rpop,
-	"LLEN":    llen,
-	"LRANGE":  lrange,
-	"LINDEX":  lindex,
-	"LSET":    lset,
-	"LTRIM":   ltrim,
+	//Integers
+	"INCR":   incr,
+	"DECR":   decr,
+	"INCRBY": incrby,
+	"DECRBY": decrby,
+	//Strings
+	"APPEND": appendCommand,
+	"STRLEN": strlen,
+	"SETNX":  setnx,
+	"MGET":   mget,
+	"MSET":   mset,
+	//Lists
+	"LPUSH":  lpush,
+	"RPUSH":  rpush,
+	"LPOP":   lpop,
+	"RPOP":   rpop,
+	"LLEN":   llen,
+	"LRANGE": lrange,
+	"LINDEX": lindex,
+	"LSET":   lset,
+	"LTRIM":  ltrim,
+	//Hashes
+	"HSET":    hset,
+	"HGET":    hget,
+	"HDEL":    hdel,
+	"HEXISTS": hexists,
+	"HLEN":    hlen,
+	"HGETALL": hgetall,
 }
 var (
 	ErrInvalidInteger = errors.New("invalid integer entered")

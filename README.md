@@ -1,4 +1,4 @@
-# Davids_Redis_Clone
+# Davids Redis Clone
 
 A Redis-inspired in-memory key-value server written in Go. Built to explore TCP networking, RESP, backend server design, and concurrent fundamentals. 
 
