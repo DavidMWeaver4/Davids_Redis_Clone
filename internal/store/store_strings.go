@@ -19,12 +19,8 @@ func (s *Store) Get(key string) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return "", false, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return "", false, nil
 	}
 	if entry.Type != StringType {
@@ -36,12 +32,8 @@ func (s *Store) Get(key string) (string, bool, error) {
 func (s *Store) Delete(key string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	_, ok := s.getEntry(key)
 	if !ok {
-		return 0
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return 0
 	}
 	delete(s.data, key)
@@ -52,26 +44,15 @@ func (s *Store) Exists(key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok {
-		return false
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
-		return false
-	}
-	return true
+	_, ok := s.getEntry(key)
+	return ok
 }
 
 func (s *Store) Append(key, value string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if ok && isExpired(entry) {
-		delete(s.data, key)
-		ok = false
-	}
+	entry, ok := s.getEntry(key)
 	if !ok {
 		s.data[key] = Entry{
 			Type:   StringType,
@@ -91,12 +72,8 @@ func (s *Store) Strlen(key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return 0, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return 0, nil
 	}
 	if entry.Type != StringType {
@@ -109,8 +86,8 @@ func (s *Store) Setnx(key, value string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		s.data[key] = Entry{
 			Type:   StringType,
 			String: value,

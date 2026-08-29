@@ -30,12 +30,8 @@ func (s *Store) Expire(key string, ttl time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return false
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return false
 	}
 	if ttl <= 0 {
@@ -52,12 +48,8 @@ func (s *Store) Persist(key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return false
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return false
 	}
 	if entry.ExpiresAt.IsZero() {

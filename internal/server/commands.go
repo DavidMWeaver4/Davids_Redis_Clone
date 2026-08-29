@@ -48,6 +48,12 @@ var commandHandlers = map[string]commandHandler{
 	"HEXISTS": hexists,
 	"HLEN":    hlen,
 	"HGETALL": hgetall,
+	//ZSET
+	"ZADD":   zadd,
+	"ZSCORE": zscore,
+	"ZCARD":  zcard,
+	"ZREM":   zrem,
+	"ZRANGE": zrange,
 }
 var (
 	ErrInvalidInteger = errors.New("invalid integer entered")

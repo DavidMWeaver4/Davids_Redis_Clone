@@ -6,8 +6,8 @@ func (s *Store) LPush(key string, values ...string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		entry = Entry{
 			Type: ListType,
 		}
@@ -35,8 +35,8 @@ func (s *Store) RPush(key string, values ...string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		entry = Entry{
 			Type: ListType,
 		}
@@ -63,14 +63,11 @@ func (s *Store) pop(key string, popFromList popFunc) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
 		return "", false, nil
 	}
-	if isExpired(entry) {
-		delete(s.data, key)
-		return "", false, nil
-	}
+
 	if entry.Type != ListType {
 		return "", false, ErrWrongType
 	}
@@ -112,12 +109,8 @@ func (l *List) RPop() (string, bool) {
 func (s *Store) LLen(key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return 0, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return 0, nil
 	}
 	if entry.Type != ListType {
@@ -132,12 +125,8 @@ func (l *List) LLen() int {
 func (s *Store) LRange(key string, start, end int) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return []string{}, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return []string{}, nil
 	}
 	if entry.Type != ListType {
@@ -172,12 +161,8 @@ func (l *List) LRange(start, end int) []string {
 func (s *Store) LIndex(key string, index int) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return "", false, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return "", false, nil
 	}
 	if entry.Type != ListType {
@@ -201,12 +186,8 @@ func (l *List) LIndex(index int) (string, bool) {
 func (s *Store) LSet(key string, index int, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return ErrNoKey
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return ErrNoKey
 	}
 	if entry.Type != ListType {
@@ -232,12 +213,8 @@ func (l *List) LSet(index int, value string) error {
 func (s *Store) LTrim(key string, start, end int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return nil
 	}
 	if entry.Type != ListType {

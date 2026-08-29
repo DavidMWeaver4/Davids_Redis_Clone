@@ -8,4 +8,5 @@ var (
 	ErrWrongType              = errors.New("WRONGTYPE operation against a key holding the wrong kind of value")
 	ErrIndexOutOfRange        = errors.New("index out of range")
 	ErrNoKey                  = errors.New("no such key")
+	ErrInvalidScore           = errors.New("invalid score")
 )

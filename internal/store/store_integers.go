@@ -9,8 +9,8 @@ func (s *Store) Incr(key string) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		s.data[key] = Entry{
 			Type:   StringType,
 			String: "1",
@@ -37,8 +37,8 @@ func (s *Store) Decr(key string) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		s.data[key] = Entry{
 			Type:   StringType,
 			String: "-1",
@@ -65,8 +65,8 @@ func (s *Store) Incrby(key string, inc int64) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		s.data[key] = Entry{
 			Type:   StringType,
 			String: strconv.FormatInt(inc, 10),

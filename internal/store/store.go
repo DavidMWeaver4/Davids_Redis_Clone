@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store/skiplist"
 )
 
 type Store struct {
@@ -19,6 +21,7 @@ const (
 	StringType
 	ListType
 	HashType
+	ZSetType
 )
 
 type Entry struct {
@@ -26,6 +29,7 @@ type Entry struct {
 	String    string
 	List      List
 	Hash      Hash
+	ZSet      ZSet
 	ExpiresAt time.Time
 }
 
@@ -34,6 +38,10 @@ type List struct {
 }
 type Hash struct {
 	values map[string]string
+}
+type ZSet struct {
+	scores map[string]float64
+	list   *skiplist.SkipList
 }
 
 type KeyValue struct {
@@ -60,4 +68,23 @@ func NewStore() *Store {
 func (s *Store) Close() {
 	s.cancel()
 	s.wg.Wait()
+}
+
+func (s *Store) getEntry(key string) (Entry, bool) {
+	entry, ok := s.data[key]
+	if !ok {
+		return Entry{}, false
+	}
+	if isExpired(entry) {
+		delete(s.data, key)
+		return Entry{}, false
+	}
+	return entry, true
+}
+func (s *Store) getEntryForWrite(key string) (Entry, bool) {
+	entry, ok := s.data[key]
+	if !ok || isExpired(entry) {
+		return Entry{}, false
+	}
+	return entry, true
 }

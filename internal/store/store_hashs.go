@@ -6,8 +6,8 @@ func (s *Store) HSet(key, field, value string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
-	if !ok || isExpired(entry) {
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
 		entry = Entry{
 			Type: HashType,
 			Hash: Hash{},
@@ -35,12 +35,8 @@ func (s *Store) HGet(key, field string) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return "", false, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return "", false, nil
 	}
 	if entry.Type != HashType {
@@ -57,12 +53,8 @@ func (s *Store) HDel(key string, fields ...string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return 0, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return 0, nil
 	}
 	if entry.Type != HashType {
@@ -92,12 +84,8 @@ func (s *Store) HExists(key, field string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return false, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return false, nil
 	}
 	if entry.Type != HashType {
@@ -114,12 +102,8 @@ func (s *Store) HLen(key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return 0, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return 0, nil
 	}
 	if entry.Type != HashType {
@@ -135,12 +119,8 @@ func (s *Store) HGetAll(key string) (map[string]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, ok := s.data[key]
+	entry, ok := s.getEntry(key)
 	if !ok {
-		return map[string]string{}, nil
-	}
-	if isExpired(entry) {
-		delete(s.data, key)
 		return map[string]string{}, nil
 	}
 	if entry.Type != HashType {
