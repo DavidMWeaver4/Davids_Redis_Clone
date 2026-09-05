@@ -116,6 +116,36 @@ func zincrby(s *Server, args []string) protocol.Value {
 	}
 	return scoreValue(newScore)
 }
+func zrangebyscore(s *Server, args []string) protocol.Value {
+	if len(args) != 5 {
+		return protocol.NewError("need 5 arguments in 'ZRANGEBYSCORE'")
+	}
+	minScore, err := parseFloat64Helper(args[1])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	maxScore, err := parseFloat64Helper(args[2])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	offset, err := parseIntHelper(args[3])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	count, err := parseIntHelper(args[4])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	payload, err := s.store.ZRangeByScore(args[0], minScore, maxScore, offset, count)
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	results := make([]protocol.Value, 0, len(payload))
+	for _, value := range payload {
+		results = append(results, protocol.NewBulkString(value.Member))
+	}
+	return protocol.NewArray(results)
+}
 
 /*
  *

@@ -572,3 +572,59 @@ func TestStore_ZRank_TiedScores(t *testing.T) {
 		t.Fatalf("ZRank = %d, want 1", rank)
 	}
 }
+func TestStore_ZRangeByScore(t *testing.T) {
+	s := New()
+
+	s.ZAdd("Scores", 30, "Charlie")
+	s.ZAdd("Scores", 10, "Alice")
+	s.ZAdd("Scores", 20, "Bob")
+
+	got, err := s.ZRangeByScore("Scores", 10, 30, 0, -1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []skiplist.MemberScore{
+		{Member: "Alice", Score: 10},
+		{Member: "Bob", Score: 20},
+		{Member: "Charlie", Score: 30},
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("ZRangeByScore length = %d, want %d", len(got), len(want))
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ZRangeByScore[%d] = %v, want %v", i, got[i], want[i])
+		}
+	}
+}
+func TestStore_ZRangeByScore_SubRange(t *testing.T) {
+	s := New()
+
+	s.ZAdd("Scores", 10, "Alice")
+	s.ZAdd("Scores", 20, "Bob")
+	s.ZAdd("Scores", 30, "Charlie")
+	s.ZAdd("Scores", 40, "David")
+
+	got, err := s.ZRangeByScore("Scores", 10, 40, 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []skiplist.MemberScore{
+		{Member: "Bob", Score: 20},
+		{Member: "Charlie", Score: 30},
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("ZRangeByScore length = %d, want %d", len(got), len(want))
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ZRangeByScore[%d] = %v, want %v", i, got[i], want[i])
+		}
+	}
+}

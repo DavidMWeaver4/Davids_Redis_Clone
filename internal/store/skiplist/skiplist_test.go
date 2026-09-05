@@ -284,16 +284,16 @@ func TestSkipList_Range(t *testing.T) {
 		name     string
 		minScore float64
 		maxScore float64
-		start    int
-		end      int
+		offset   int
+		count    int
 		want     []MemberScore
 	}{
 		{
 			name:     "entire score range",
 			minScore: 10,
 			maxScore: 40,
-			start:    0,
-			end:      10,
+			offset:   0,
+			count:    -1,
 			want: []MemberScore{
 				{Member: "foo", Score: 10},
 				{Member: "bar", Score: 20},
@@ -305,19 +305,19 @@ func TestSkipList_Range(t *testing.T) {
 			name:     "score range",
 			minScore: 20,
 			maxScore: 30,
-			start:    0,
-			end:      10,
+			offset:   0,
+			count:    -1,
 			want: []MemberScore{
 				{Member: "bar", Score: 20},
 				{Member: "baz", Score: 30},
 			},
 		},
 		{
-			name:     "score range with rank range",
+			name:     "score range with offset and count",
 			minScore: 10,
 			maxScore: 40,
-			start:    1,
-			end:      2,
+			offset:   1,
+			count:    2,
 			want: []MemberScore{
 				{Member: "bar", Score: 20},
 				{Member: "baz", Score: 30},
@@ -327,17 +327,36 @@ func TestSkipList_Range(t *testing.T) {
 			name:     "no matching scores",
 			minScore: 50,
 			maxScore: 60,
-			start:    0,
-			end:      10,
+			offset:   0,
+			count:    -1,
 			want:     []MemberScore{},
 		},
 		{
-			name:     "invalid rank range",
+			name:     "count zero",
 			minScore: 10,
 			maxScore: 40,
-			start:    3,
-			end:      1,
+			offset:   0,
+			count:    0,
 			want:     []MemberScore{},
+		},
+		{
+			name:     "offset past end",
+			minScore: 10,
+			maxScore: 40,
+			offset:   10,
+			count:    2,
+			want:     []MemberScore{},
+		},
+		{
+			name:     "offset with unlimited count",
+			minScore: 10,
+			maxScore: 40,
+			offset:   2,
+			count:    -1,
+			want: []MemberScore{
+				{Member: "baz", Score: 30},
+				{Member: "qux", Score: 40},
+			},
 		},
 	}
 
@@ -346,8 +365,8 @@ func TestSkipList_Range(t *testing.T) {
 			got := sl.Range(
 				tt.minScore,
 				tt.maxScore,
-				tt.start,
-				tt.end,
+				tt.offset,
+				tt.count,
 			)
 
 			if !reflect.DeepEqual(got, tt.want) {
@@ -356,7 +375,35 @@ func TestSkipList_Range(t *testing.T) {
 		})
 	}
 }
+func TestSkipList_Range_InvalidOffset(t *testing.T) {
+	sl := NewSkipList()
 
+	sl.Insert(10, "foo")
+	sl.Insert(20, "bar")
+
+	got := sl.Range(10, 20, -1, 2)
+
+	want := []MemberScore{}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestSkipList_Range_InvalidScoreRange(t *testing.T) {
+	sl := NewSkipList()
+
+	sl.Insert(10, "foo")
+	sl.Insert(20, "bar")
+
+	got := sl.Range(20, 10, 0, -1)
+
+	want := []MemberScore{}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
 func TestSkipList_Range_SameScore(t *testing.T) {
 	sl := NewSkipList()
 
@@ -364,7 +411,7 @@ func TestSkipList_Range_SameScore(t *testing.T) {
 	sl.Insert(10, "alpha")
 	sl.Insert(10, "bravo")
 
-	got := sl.Range(10, 10, 0, 10)
+	got := sl.Range(10, 10, 0, -1)
 
 	want := []MemberScore{
 		{Member: "alpha", Score: 10},

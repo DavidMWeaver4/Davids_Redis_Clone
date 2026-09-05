@@ -684,3 +684,36 @@ func TestCommands_ZRank_TiedScores(t *testing.T) {
 		t.Fatalf("expected 1, got %d", response.Int)
 	}
 }
+func TestCommands_ZRangeByScore(t *testing.T) {
+	s := &Server{store: store.New()}
+
+	zadd(s, []string{"scores", "30", "Charlie"})
+	zadd(s, []string{"scores", "10", "Alice"})
+	zadd(s, []string{"scores", "20", "Bob"})
+
+	response := zrangebyscore(s, []string{"scores", "10", "30", "0", "-1"})
+
+	if response.Type != protocol.Array {
+		t.Fatalf("expected Array, got %v", response.Type)
+	}
+
+	expected := []string{
+		"Alice",
+		"Bob",
+		"Charlie",
+	}
+
+	if len(response.Array) != len(expected) {
+		t.Fatalf("expected %d results, got %d", len(expected), len(response.Array))
+	}
+
+	for i, value := range response.Array {
+		if value.Type != protocol.BulkString {
+			t.Fatalf("response[%d]: expected BulkString, got %v", i, value.Type)
+		}
+
+		if value.Str != expected[i] {
+			t.Fatalf("response[%d]: expected %q, got %q", i, expected[i], value.Str)
+		}
+	}
+}

@@ -201,3 +201,21 @@ func (s *Store) ZIncrby(key string, inc float64, member string) (float64, error)
 	s.data[key] = entry
 	return newScore, nil
 }
+func (s *Store) ZRangeByScore(key string, minScore, maxScore float64, offset, count int) ([]skiplist.MemberScore, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.getEntry(key)
+	if !ok {
+		return []skiplist.MemberScore{}, nil
+	}
+	if entry.Type != ZSetType {
+		return []skiplist.MemberScore{}, ErrWrongType
+	}
+	return entry.ZSet.ZRangeByScore(minScore, maxScore, offset, count), nil
+}
+func (z *ZSet) ZRangeByScore(minScore, maxScore float64, offset, count int) []skiplist.MemberScore {
+	if offset < 0 || count == 0 || minScore > maxScore {
+		return []skiplist.MemberScore{}
+	}
+	return z.list.Range(minScore, maxScore, offset, count)
+}

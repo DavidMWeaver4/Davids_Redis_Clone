@@ -50,13 +50,14 @@ var commandHandlers = map[string]commandHandler{
 	"HLEN":    hlen,
 	"HGETALL": hgetall,
 	//ZSET
-	"ZADD":    zadd,
-	"ZSCORE":  zscore,
-	"ZCARD":   zcard,
-	"ZREM":    zrem,
-	"ZRANGE":  zrange,
-	"ZRANK":   zrank,
-	"ZINCRBY": zincrby,
+	"ZADD":          zadd,
+	"ZSCORE":        zscore,
+	"ZCARD":         zcard,
+	"ZREM":          zrem,
+	"ZRANGE":        zrange,
+	"ZRANK":         zrank,
+	"ZINCRBY":       zincrby,
+	"ZRANGEBYSCORE": zrangebyscore,
 }
 var (
 	ErrInvalidInteger = errors.New("invalid integer entered")

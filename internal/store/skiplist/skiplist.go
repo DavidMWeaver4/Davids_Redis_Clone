@@ -73,8 +73,8 @@ func (sl *SkipList) Search(score float64, member string) *skipNode {
 	}
 	return nil
 }
-func (sl *SkipList) Range(minScore, maxScore float64, start, end int) []MemberScore {
-	if start > end {
+func (sl *SkipList) Range(minScore, maxScore float64, offset, count int) []MemberScore {
+	if offset < 0 || count == 0 || minScore > maxScore {
 		return []MemberScore{}
 	}
 	myNode := sl.findFirstAtOrAfter(minScore)
@@ -82,14 +82,15 @@ func (sl *SkipList) Range(minScore, maxScore float64, start, end int) []MemberSc
 	results := make([]MemberScore, 0)
 
 	for myNode != nil && myNode.score <= maxScore {
-		if index >= start && index <= end {
+		if index >= offset {
 			results = append(results, MemberScore{
 				Member: myNode.member,
 				Score:  myNode.score,
 			})
-		}
-		if index == end {
-			break
+
+			if count > 0 && len(results) == count {
+				break
+			}
 		}
 		index++
 		myNode = myNode.forward[0]
