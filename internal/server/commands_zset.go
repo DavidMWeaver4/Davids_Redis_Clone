@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
@@ -57,8 +58,8 @@ func zrem(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(removed))
 }
 func zrange(s *Server, args []string) protocol.Value {
-	if len(args) != 3 {
-		return protocol.NewError("need 3 arguments in 'ZRANGE'")
+	if len(args) != 3 && len(args) != 4 {
+		return protocol.NewError("need 3 or 4 arguments in 'ZRANGE'")
 	}
 	start, err := parseIntHelper(args[1])
 	if err != nil {
@@ -68,15 +69,52 @@ func zrange(s *Server, args []string) protocol.Value {
 	if err != nil {
 		return protocol.NewError(ErrInvalidInteger.Error())
 	}
+	withScores := false
+	if len(args) == 4 {
+		if strings.ToUpper(args[3]) != "WITHSCORES" {
+			return protocol.NewError("syntax error 'WITHSCORES'")
+		}
+		withScores = true
+	}
 	payload, err := s.store.ZRange(args[0], start, end)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	results := make([]protocol.Value, 0, len(payload))
 	for _, value := range payload {
-		results = append(results, protocol.NewBulkString(value))
+		results = append(results, protocol.NewBulkString(value.Member))
+		if withScores {
+			results = append(results, scoreValue(value.Score))
+		}
 	}
 	return protocol.NewArray(results)
+}
+func zrank(s *Server, args []string) protocol.Value {
+	if len(args) != 2 {
+		return protocol.NewError("need 2 arguments in 'ZRANK'")
+	}
+	rank, found, err := s.store.ZRank(args[0], args[1])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	if !found {
+		return protocol.NewNullBulkString()
+	}
+	return protocol.NewInteger(int64(rank))
+}
+func zincrby(s *Server, args []string) protocol.Value {
+	if len(args) != 3 {
+		return protocol.NewError("need 3 arguments in 'ZINCRBY'")
+	}
+	inc, err := parseFloat64Helper(args[1])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	newScore, err := s.store.ZIncrby(args[0], inc, args[2])
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	return scoreValue(newScore)
 }
 
 /*

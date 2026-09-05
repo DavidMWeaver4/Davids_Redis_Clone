@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
@@ -49,14 +50,17 @@ var commandHandlers = map[string]commandHandler{
 	"HLEN":    hlen,
 	"HGETALL": hgetall,
 	//ZSET
-	"ZADD":   zadd,
-	"ZSCORE": zscore,
-	"ZCARD":  zcard,
-	"ZREM":   zrem,
-	"ZRANGE": zrange,
+	"ZADD":    zadd,
+	"ZSCORE":  zscore,
+	"ZCARD":   zcard,
+	"ZREM":    zrem,
+	"ZRANGE":  zrange,
+	"ZRANK":   zrank,
+	"ZINCRBY": zincrby,
 }
 var (
 	ErrInvalidInteger = errors.New("invalid integer entered")
+	ErrInvalidFloat   = errors.New("invalid float entered")
 )
 
 func (s *Server) execute(command protocol.Value) protocol.Value {
@@ -83,4 +87,27 @@ func (s *Server) execute(command protocol.Value) protocol.Value {
 		return protocol.NewError("invalid command")
 	}
 	return handler(s, args)
+}
+
+/*
+||\\
+||	\\
+|| 	 //
+||	//
+||//
+*/
+
+func parseIntHelper(value string) (int, error) {
+	value64, err := strconv.ParseInt(value, 10, strconv.IntSize)
+	if err != nil {
+		return 0, ErrInvalidInteger
+	}
+	return int(value64), nil
+}
+func parseFloat64Helper(value string) (float64, error) {
+	value64, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, ErrInvalidFloat
+	}
+	return value64, nil
 }

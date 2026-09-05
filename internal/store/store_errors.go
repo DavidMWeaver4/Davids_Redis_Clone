@@ -9,4 +9,5 @@ var (
 	ErrIndexOutOfRange        = errors.New("index out of range")
 	ErrNoKey                  = errors.New("no such key")
 	ErrInvalidScore           = errors.New("invalid score")
+	ErrInvalidNumber          = errors.New("number is NaN")
 )

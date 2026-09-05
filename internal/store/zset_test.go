@@ -3,6 +3,8 @@ package store
 import (
 	"math"
 	"testing"
+
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store/skiplist"
 )
 
 func TestStore_ZAdd_NewMember(t *testing.T) {
@@ -351,7 +353,11 @@ func TestStore_ZRange(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []string{"Alice", "Bob", "Charlie"}
+	want := []skiplist.MemberScore{
+		{Member: "Alice", Score: 10},
+		{Member: "Bob", Score: 20},
+		{Member: "Charlie", Score: 30},
+	}
 
 	if len(got) != len(want) {
 		t.Fatalf("ZRange length = %d, want %d", len(got), len(want))
@@ -359,7 +365,7 @@ func TestStore_ZRange(t *testing.T) {
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("ZRange[%d] = %q, want %q", i, got[i], want[i])
+			t.Fatalf("ZRange[%d] = %v, want %v", i, got[i], want[i])
 		}
 	}
 }
@@ -377,7 +383,10 @@ func TestStore_ZRange_SubRange(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []string{"Bob", "Charlie"}
+	want := []skiplist.MemberScore{
+		{Member: "Bob", Score: 20},
+		{Member: "Charlie", Score: 30},
+	}
 
 	if len(got) != len(want) {
 		t.Fatalf("ZRange length = %d, want %d", len(got), len(want))
@@ -385,7 +394,7 @@ func TestStore_ZRange_SubRange(t *testing.T) {
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("ZRange[%d] = %q, want %q", i, got[i], want[i])
+			t.Fatalf("ZRange[%d] = %v, want %v", i, got[i], want[i])
 		}
 	}
 }
@@ -402,7 +411,10 @@ func TestStore_ZRange_NegativeIndexes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []string{"Bob", "Charlie"}
+	want := []skiplist.MemberScore{
+		{Member: "Bob", Score: 20},
+		{Member: "Charlie", Score: 30},
+	}
 
 	if len(got) != len(want) {
 		t.Fatalf("ZRange length = %d, want %d", len(got), len(want))
@@ -410,7 +422,7 @@ func TestStore_ZRange_NegativeIndexes(t *testing.T) {
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("ZRange[%d] = %q, want %q", i, got[i], want[i])
+			t.Fatalf("ZRange[%d] = %v, want %v", i, got[i], want[i])
 		}
 	}
 }
@@ -426,7 +438,10 @@ func TestStore_ZRange_PastEnd(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []string{"Alice", "Bob"}
+	want := []skiplist.MemberScore{
+		{Member: "Alice", Score: 10},
+		{Member: "Bob", Score: 20},
+	}
 
 	if len(got) != len(want) {
 		t.Fatalf("ZRange length = %d, want %d", len(got), len(want))
@@ -434,7 +449,7 @@ func TestStore_ZRange_PastEnd(t *testing.T) {
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("ZRange[%d] = %q, want %q", i, got[i], want[i])
+			t.Fatalf("ZRange[%d] = %v, want %v", i, got[i], want[i])
 		}
 	}
 }
@@ -476,5 +491,84 @@ func TestStore_ZRange_WrongType(t *testing.T) {
 	_, err := s.ZRange("Scores", 0, -1)
 	if err != ErrWrongType {
 		t.Fatalf("expected ErrWrongType, got %v", err)
+	}
+}
+func TestStore_ZRank_ExistingMember(t *testing.T) {
+	s := New()
+
+	s.ZAdd("Scores", 30, "Charlie")
+	s.ZAdd("Scores", 10, "Alice")
+	s.ZAdd("Scores", 20, "Bob")
+
+	rank, found, err := s.ZRank("Scores", "Bob")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected member to exist")
+	}
+	if rank != 1 {
+		t.Fatalf("ZRank = %d, want 1", rank)
+	}
+}
+
+func TestStore_ZRank_MissingMember(t *testing.T) {
+	s := New()
+
+	s.ZAdd("Scores", 10, "Alice")
+
+	rank, found, err := s.ZRank("Scores", "Bob")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found {
+		t.Fatal("expected member to not exist")
+	}
+	if rank != 0 {
+		t.Fatalf("ZRank = %d, want 0", rank)
+	}
+}
+
+func TestStore_ZRank_MissingKey(t *testing.T) {
+	s := New()
+
+	rank, found, err := s.ZRank("Scores", "Alice")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found {
+		t.Fatal("expected member to not exist")
+	}
+	if rank != 0 {
+		t.Fatalf("ZRank = %d, want 0", rank)
+	}
+}
+
+func TestStore_ZRank_WrongType(t *testing.T) {
+	s := New()
+
+	s.Set("Scores", "hello", 0)
+
+	_, _, err := s.ZRank("Scores", "Alice")
+	if err != ErrWrongType {
+		t.Fatalf("expected ErrWrongType, got %v", err)
+	}
+}
+func TestStore_ZRank_TiedScores(t *testing.T) {
+	s := New()
+
+	s.ZAdd("Scores", 10, "Charlie")
+	s.ZAdd("Scores", 10, "Alice")
+	s.ZAdd("Scores", 10, "Bob")
+
+	rank, found, err := s.ZRank("Scores", "Bob")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected member to exist")
+	}
+	if rank != 1 {
+		t.Fatalf("ZRank = %d, want 1", rank)
 	}
 }

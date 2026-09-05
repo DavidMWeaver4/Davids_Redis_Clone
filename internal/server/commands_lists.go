@@ -1,8 +1,6 @@
 package server
 
 import (
-	"strconv"
-
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
@@ -139,12 +137,4 @@ func ltrim(s *Server, args []string) protocol.Value {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewSimpleString("OK")
-}
-
-func parseIntHelper(value string) (int, error) {
-	value64, err := strconv.ParseInt(value, 10, strconv.IntSize)
-	if err != nil {
-		return 0, ErrInvalidInteger
-	}
-	return int(value64), nil
 }

@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store/skiplist"
 	"math"
+
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store/skiplist"
 )
 
 func (s *Store) ZAdd(key string, score float64, member string) (int, error) {
@@ -112,26 +113,22 @@ func (z *ZSet) ZRem(member string) int {
 	return 1
 
 }
-func (s *Store) ZRange(key string, start, stop int) ([]string, error) {
+func (s *Store) ZRange(key string, start, stop int) ([]skiplist.MemberScore, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry, ok := s.getEntry(key)
 	if !ok {
-		return []string{}, nil
+		return []skiplist.MemberScore{}, nil
 	}
 	if entry.Type != ZSetType {
-		return []string{}, ErrWrongType
+		return []skiplist.MemberScore{}, ErrWrongType
 	}
-	values := entry.ZSet.Zrange(start, stop)
-	members := make([]string, 0, len(values))
-	for _, value := range values {
-		members = append(members, value.Member)
-	}
-	return members, nil
+
+	return entry.ZSet.ZRange(start, stop), nil
 }
 
-func (z *ZSet) Zrange(start, stop int) []skiplist.MemberScore {
+func (z *ZSet) ZRange(start, stop int) []skiplist.MemberScore {
 	size := len(z.scores)
 	if size == 0 {
 		return []skiplist.MemberScore{}
@@ -153,4 +150,54 @@ func (z *ZSet) Zrange(start, stop int) []skiplist.MemberScore {
 	}
 
 	return z.list.RangeByRank(start, stop)
+}
+
+func (s *Store) ZRank(key string, member string) (int, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.getEntry(key)
+	if !ok {
+		return 0, false, nil
+	}
+	if entry.Type != ZSetType {
+		return 0, false, ErrWrongType
+	}
+	rank, found := entry.ZSet.ZRank(member)
+	return rank, found, nil
+}
+func (z *ZSet) ZRank(member string) (int, bool) {
+	score, found := z.scores[member]
+	if !found {
+		return 0, false
+	}
+	rank := z.list.Rank(score, member)
+	return rank, rank >= 0
+}
+func (s *Store) ZIncrby(key string, inc float64, member string) (float64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if math.IsNaN(inc) {
+		return 0.0, ErrInvalidNumber
+	}
+	entry, ok := s.getEntryForWrite(key)
+	if !ok {
+		entry = Entry{
+			Type: ZSetType,
+			ZSet: ZSet{},
+		}
+	}
+	if entry.Type != ZSetType {
+		return 0.0, ErrWrongType
+	}
+	currentScore, found := entry.ZSet.scores[member]
+	if !found {
+		currentScore = 0
+	}
+	newScore := currentScore + inc
+	if math.IsNaN(newScore) {
+		return 0, ErrInvalidNumber
+	}
+	entry.ZSet.ZAdd(newScore, member)
+	s.data[key] = entry
+	return newScore, nil
 }
