@@ -4,7 +4,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
-func lpush(s *Server, args []string) protocol.Value {
+func lpush(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 2 {
 		return protocol.NewError("need at least 2 arguments in 'LPUSH'")
 	}
@@ -16,7 +16,7 @@ func lpush(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(length))
 }
 
-func rpush(s *Server, args []string) protocol.Value {
+func rpush(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 2 {
 		return protocol.NewError("need at least 2 arguments in 'RPUSH'")
 	}
@@ -27,7 +27,7 @@ func rpush(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(length))
 }
 
-func lpop(s *Server, args []string) protocol.Value {
+func lpop(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'LPOP'")
 	}
@@ -40,7 +40,7 @@ func lpop(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewBulkString(value)
 }
-func rpop(s *Server, args []string) protocol.Value {
+func rpop(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'RPOP'")
 	}
@@ -53,7 +53,7 @@ func rpop(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewBulkString(value)
 }
-func llen(s *Server, args []string) protocol.Value {
+func llen(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'LLEN'")
 	}
@@ -64,7 +64,7 @@ func llen(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(length))
 }
 
-func lrange(s *Server, args []string) protocol.Value {
+func lrange(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments for 'LRANGE'")
 	}
@@ -88,7 +88,7 @@ func lrange(s *Server, args []string) protocol.Value {
 	return protocol.NewArray(result)
 }
 
-func lindex(s *Server, args []string) protocol.Value {
+func lindex(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'LINDEX'")
 	}
@@ -105,7 +105,7 @@ func lindex(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewBulkString(value)
 }
-func lset(s *Server, args []string) protocol.Value {
+func lset(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments for 'LSET'")
 	}
@@ -120,7 +120,7 @@ func lset(s *Server, args []string) protocol.Value {
 	return protocol.NewSimpleString("OK")
 }
 
-func ltrim(s *Server, args []string) protocol.Value {
+func ltrim(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments for 'LTRIM'")
 	}

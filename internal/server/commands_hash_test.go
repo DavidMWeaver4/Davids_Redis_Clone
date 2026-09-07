@@ -9,8 +9,9 @@ import (
 
 func TestCommands_HSet_Success(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
 
-	response := hset(s, []string{"Foo", "Bar", "Baz"})
+	response := hset(s, c, []string{"Foo", "Bar", "Baz"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -23,10 +24,10 @@ func TestCommands_HSet_Success(t *testing.T) {
 
 func TestCommands_HSet_Update(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	hset(s, c, []string{"Foo", "Bar", "Baz"})
 
-	hset(s, []string{"Foo", "Bar", "Baz"})
-
-	response := hset(s, []string{"Foo", "Bar", "NewBaz"})
+	response := hset(s, c, []string{"Foo", "Bar", "NewBaz"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -39,7 +40,7 @@ func TestCommands_HSet_Update(t *testing.T) {
 
 func TestCommands_HSet_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -48,7 +49,7 @@ func TestCommands_HSet_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := hset(s, args)
+		response := hset(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -58,13 +59,13 @@ func TestCommands_HSet_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_HGet_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hget(s, []string{"Foo", "Bar"})
+	response := hget(s, c, []string{"Foo", "Bar"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -77,8 +78,8 @@ func TestCommands_HGet_Success(t *testing.T) {
 
 func TestCommands_HGet_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := hget(s, []string{"Foo", "Bar"})
+	c := newTestClient()
+	response := hget(s, c, []string{"Foo", "Bar"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -87,13 +88,13 @@ func TestCommands_HGet_MissingKey(t *testing.T) {
 
 func TestCommands_HGet_MissingField(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hget(s, []string{"Foo", "Missing"})
+	response := hget(s, c, []string{"Foo", "Missing"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -102,7 +103,7 @@ func TestCommands_HGet_MissingField(t *testing.T) {
 
 func TestCommands_HGet_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -110,7 +111,7 @@ func TestCommands_HGet_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := hget(s, args)
+		response := hget(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -120,7 +121,7 @@ func TestCommands_HGet_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_HDel_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -131,7 +132,7 @@ func TestCommands_HDel_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hdel(s, []string{"Foo", "Bar", "Second"})
+	response := hdel(s, c, []string{"Foo", "Bar", "Second"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -144,13 +145,13 @@ func TestCommands_HDel_Success(t *testing.T) {
 
 func TestCommands_HDel_MissingFields(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hdel(s, []string{"Foo", "Missing"})
+	response := hdel(s, c, []string{"Foo", "Missing"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -163,8 +164,8 @@ func TestCommands_HDel_MissingFields(t *testing.T) {
 
 func TestCommands_HDel_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := hdel(s, []string{"Foo"})
+	c := newTestClient()
+	response := hdel(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -173,13 +174,13 @@ func TestCommands_HDel_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_HExists_Exists(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hexists(s, []string{"Foo", "Bar"})
+	response := hexists(s, c, []string{"Foo", "Bar"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -192,8 +193,8 @@ func TestCommands_HExists_Exists(t *testing.T) {
 
 func TestCommands_HExists_Missing(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := hexists(s, []string{"Foo", "Bar"})
+	c := newTestClient()
+	response := hexists(s, c, []string{"Foo", "Bar"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -206,7 +207,7 @@ func TestCommands_HExists_Missing(t *testing.T) {
 
 func TestCommands_HExists_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -214,7 +215,7 @@ func TestCommands_HExists_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := hexists(s, args)
+		response := hexists(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -224,7 +225,7 @@ func TestCommands_HExists_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_HLen_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -235,7 +236,7 @@ func TestCommands_HLen_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hlen(s, []string{"Foo"})
+	response := hlen(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -248,8 +249,8 @@ func TestCommands_HLen_Success(t *testing.T) {
 
 func TestCommands_HLen_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := hlen(s, []string{"Foo"})
+	c := newTestClient()
+	response := hlen(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -262,14 +263,14 @@ func TestCommands_HLen_MissingKey(t *testing.T) {
 
 func TestCommands_HLen_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := hlen(s, args)
+		response := hlen(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -279,7 +280,7 @@ func TestCommands_HLen_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_HGetAll_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.HSet("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -290,7 +291,7 @@ func TestCommands_HGetAll_Success(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := hgetall(s, []string{"Foo"})
+	response := hgetall(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -341,8 +342,8 @@ func TestCommands_HGetAll_Success(t *testing.T) {
 
 func TestCommands_HGetAll_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := hgetall(s, []string{"Foo"})
+	c := newTestClient()
+	response := hgetall(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -355,14 +356,14 @@ func TestCommands_HGetAll_MissingKey(t *testing.T) {
 
 func TestCommands_HGetAll_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := hgetall(s, args)
+		response := hgetall(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)

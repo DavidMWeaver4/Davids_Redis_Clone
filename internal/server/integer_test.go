@@ -13,10 +13,10 @@ func TestCommands_Incr_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := incr(s, []string{"Foo"})
+	response := incr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -31,8 +31,8 @@ func TestCommands_Incr_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := incr(s, []string{"Foo"})
+	c := newTestClient()
+	response := incr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -47,10 +47,10 @@ func TestCommands_Incr_NonInteger(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := incr(s, []string{"Foo"})
+	response := incr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -65,14 +65,14 @@ func TestCommands_Incr_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := incr(s, args)
+		response := incr(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -84,10 +84,10 @@ func TestCommands_Incr_Overflow(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", strconv.FormatInt(math.MaxInt64, 10), 0)
 
-	response := incr(s, []string{"Foo"})
+	response := incr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -101,10 +101,10 @@ func TestCommands_Decr_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := decr(s, []string{"Foo"})
+	response := decr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -119,8 +119,8 @@ func TestCommands_Decr_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := decr(s, []string{"Foo"})
+	c := newTestClient()
+	response := decr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -135,10 +135,10 @@ func TestCommands_Decr_NonInteger(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := decr(s, []string{"Foo"})
+	response := decr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -153,14 +153,14 @@ func TestCommands_Decr_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := decr(s, args)
+		response := decr(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -174,8 +174,8 @@ func TestCommands_Decr_Underflow(t *testing.T) {
 	}
 
 	s.store.Set("Foo", strconv.FormatInt(math.MinInt64, 10), 0)
-
-	response := decr(s, []string{"Foo"})
+	c := newTestClient()
+	response := decr(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -189,10 +189,10 @@ func TestCommands_Incrby_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := incrby(s, []string{"Foo", "5"})
+	response := incrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -207,8 +207,8 @@ func TestCommands_Incrby_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := incrby(s, []string{"Foo", "5"})
+	c := newTestClient()
+	response := incrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -223,10 +223,10 @@ func TestCommands_Incrby_NonInteger(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := incrby(s, []string{"Foo", "5"})
+	response := incrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -241,8 +241,8 @@ func TestCommands_Incrby_InvalidIncrement(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := incrby(s, []string{"Foo", "abc"})
+	c := newTestClient()
+	response := incrby(s, c, []string{"Foo", "abc"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -257,7 +257,7 @@ func TestCommands_Incrby_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -265,7 +265,7 @@ func TestCommands_Incrby_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := incrby(s, args)
+		response := incrby(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -277,10 +277,10 @@ func TestCommands_Incrby_PositiveOverflow(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", strconv.FormatInt(math.MaxInt64, 10), 0)
 
-	response := incrby(s, []string{"Foo", "1"})
+	response := incrby(s, c, []string{"Foo", "1"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -295,10 +295,10 @@ func TestCommands_Incrby_NegativeOverflow(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", strconv.FormatInt(math.MinInt64, 10), 0)
 
-	response := incrby(s, []string{"Foo", "-1"})
+	response := incrby(s, c, []string{"Foo", "-1"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -313,10 +313,10 @@ func TestCommands_Incrby_Zero(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := incrby(s, []string{"Foo", "0"})
+	response := incrby(s, c, []string{"Foo", "0"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -331,10 +331,10 @@ func TestCommands_Decrby_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := decrby(s, []string{"Foo", "5"})
+	response := decrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -349,8 +349,8 @@ func TestCommands_Decrby_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := decrby(s, []string{"Foo", "5"})
+	c := newTestClient()
+	response := decrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -365,10 +365,10 @@ func TestCommands_Decrby_NonInteger(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := decrby(s, []string{"Foo", "5"})
+	response := decrby(s, c, []string{"Foo", "5"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -383,8 +383,8 @@ func TestCommands_Decrby_InvalidDecrement(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := decrby(s, []string{"Foo", "abc"})
+	c := newTestClient()
+	response := decrby(s, c, []string{"Foo", "abc"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -399,8 +399,8 @@ func TestCommands_Decrby_NegativeArgument(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := decrby(s, []string{"Foo", "-5"})
+	c := newTestClient()
+	response := decrby(s, c, []string{"Foo", "-5"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -415,7 +415,7 @@ func TestCommands_Decrby_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -423,7 +423,7 @@ func TestCommands_Decrby_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := decrby(s, args)
+		response := decrby(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -437,8 +437,8 @@ func TestCommands_Decrby_Underflow(t *testing.T) {
 	}
 
 	s.store.Set("Foo", strconv.FormatInt(math.MinInt64, 10), 0)
-
-	response := decrby(s, []string{"Foo", "1"})
+	c := newTestClient()
+	response := decrby(s, c, []string{"Foo", "1"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -453,10 +453,10 @@ func TestCommands_Decrby_Zero(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "20", 0)
 
-	response := decrby(s, []string{"Foo", "0"})
+	response := decrby(s, c, []string{"Foo", "0"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)

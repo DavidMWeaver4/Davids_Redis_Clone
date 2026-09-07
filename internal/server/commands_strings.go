@@ -9,7 +9,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
-func set(s *Server, args []string) protocol.Value {
+func set(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 && len(args) != 4 {
 		return protocol.NewError("need 2 or 4 arguments for 'SET'")
 	}
@@ -34,7 +34,7 @@ func set(s *Server, args []string) protocol.Value {
 	return protocol.NewSimpleString("OK")
 }
 
-func get(s *Server, args []string) protocol.Value {
+func get(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'GET'")
 	}
@@ -47,7 +47,7 @@ func get(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewBulkString(value)
 }
-func appendCommand(s *Server, args []string) protocol.Value {
+func appendCommand(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'APPEND'")
 	}
@@ -57,7 +57,7 @@ func appendCommand(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(int64(strlen))
 }
-func strlen(s *Server, args []string) protocol.Value {
+func strlen(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'STRLEN'")
 	}
@@ -67,7 +67,7 @@ func strlen(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(int64(strlen))
 }
-func setnx(s *Server, args []string) protocol.Value {
+func setnx(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'SETNX'")
 	}
@@ -80,7 +80,7 @@ func setnx(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(1)
 }
-func mget(s *Server, args []string) protocol.Value {
+func mget(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 1 {
 		return protocol.NewError("need at least 1 argument for 'MGET'")
 	}
@@ -99,7 +99,7 @@ func mget(s *Server, args []string) protocol.Value {
 	return protocol.NewArray(getResults)
 }
 
-func mset(s *Server, args []string) protocol.Value {
+func mset(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 2 || len(args)%2 != 0 {
 		return protocol.NewError("need at least 2 or even amount of arguments for 'MSET'")
 	}

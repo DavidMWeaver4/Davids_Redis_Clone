@@ -29,6 +29,7 @@ func (s *Server) ListenAndServe() error {
 		return err
 	}
 	defer listener.Close()
+	log.Printf("Redis clone listening on %s", s.addr)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -42,7 +43,9 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) handleClient(conn net.Conn) {
 	defer conn.Close()
-
+	client := &Client{
+		conn: conn,
+	}
 	reader := bufio.NewReader(conn)
 
 	for {
@@ -55,7 +58,7 @@ func (s *Server) handleClient(conn net.Conn) {
 			return
 		}
 
-		response := s.execute(value)
+		response := s.execute(client, value)
 		err = protocol.Write(conn, response)
 		if err != nil {
 			log.Printf("client error: %v", err)

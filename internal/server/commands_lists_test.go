@@ -9,8 +9,8 @@ import (
 
 func TestCommands_LPush_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lpush(s, []string{"Foo", "Bar", "Baz"})
+	c := newTestClient()
+	response := lpush(s, c, []string{"Foo", "Bar", "Baz"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -23,14 +23,14 @@ func TestCommands_LPush_Success(t *testing.T) {
 
 func TestCommands_LPush_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
 	}
 
 	for _, args := range tests {
-		response := lpush(s, args)
+		response := lpush(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -40,8 +40,8 @@ func TestCommands_LPush_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_RPush_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := rpush(s, []string{"Foo", "Bar", "Baz"})
+	c := newTestClient()
+	response := rpush(s, c, []string{"Foo", "Bar", "Baz"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -54,14 +54,14 @@ func TestCommands_RPush_Success(t *testing.T) {
 
 func TestCommands_RPush_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
 	}
 
 	for _, args := range tests {
-		response := rpush(s, args)
+		response := rpush(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -71,13 +71,13 @@ func TestCommands_RPush_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_LPop_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.LPush("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := lpop(s, []string{"Foo"})
+	response := lpop(s, c, []string{"Foo"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -90,8 +90,8 @@ func TestCommands_LPop_Success(t *testing.T) {
 
 func TestCommands_LPop_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lpop(s, []string{"Foo"})
+	c := newTestClient()
+	response := lpop(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected NullBulkString, got %v", response.Type)
@@ -100,14 +100,14 @@ func TestCommands_LPop_MissingKey(t *testing.T) {
 
 func TestCommands_LPop_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := lpop(s, args)
+		response := lpop(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -117,13 +117,13 @@ func TestCommands_LPop_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_RPop_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := rpop(s, []string{"Foo"})
+	response := rpop(s, c, []string{"Foo"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -136,8 +136,8 @@ func TestCommands_RPop_Success(t *testing.T) {
 
 func TestCommands_RPop_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := rpop(s, []string{"Foo"})
+	c := newTestClient()
+	response := rpop(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected NullBulkString, got %v", response.Type)
@@ -146,14 +146,14 @@ func TestCommands_RPop_MissingKey(t *testing.T) {
 
 func TestCommands_RPop_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := rpop(s, args)
+		response := rpop(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -163,13 +163,13 @@ func TestCommands_RPop_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_LLen_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := llen(s, []string{"Foo"})
+	response := llen(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -182,8 +182,8 @@ func TestCommands_LLen_Success(t *testing.T) {
 
 func TestCommands_LLen_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := llen(s, []string{"Foo"})
+	c := newTestClient()
+	response := llen(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -196,14 +196,14 @@ func TestCommands_LLen_MissingKey(t *testing.T) {
 
 func TestCommands_LLen_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := llen(s, args)
+		response := llen(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -213,13 +213,13 @@ func TestCommands_LLen_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_LRange_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz", "Qux")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := lrange(s, []string{"Foo", "1", "2"})
+	response := lrange(s, c, []string{"Foo", "1", "2"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -253,8 +253,8 @@ func TestCommands_LRange_Success(t *testing.T) {
 
 func TestCommands_LRange_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lrange(s, []string{"Foo", "0", "-1"})
+	c := newTestClient()
+	response := lrange(s, c, []string{"Foo", "0", "-1"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -267,7 +267,7 @@ func TestCommands_LRange_MissingKey(t *testing.T) {
 
 func TestCommands_LRange_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -276,7 +276,7 @@ func TestCommands_LRange_InvalidArguments(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := lrange(s, args)
+		response := lrange(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -286,8 +286,8 @@ func TestCommands_LRange_InvalidArguments(t *testing.T) {
 
 func TestCommands_LRange_InvalidStart(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lrange(s, []string{"Foo", "abc", "2"})
+	c := newTestClient()
+	response := lrange(s, c, []string{"Foo", "abc", "2"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -296,8 +296,8 @@ func TestCommands_LRange_InvalidStart(t *testing.T) {
 
 func TestCommands_LRange_InvalidEnd(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lrange(s, []string{"Foo", "0", "abc"})
+	c := newTestClient()
+	response := lrange(s, c, []string{"Foo", "0", "abc"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -306,13 +306,13 @@ func TestCommands_LRange_InvalidEnd(t *testing.T) {
 
 func TestCommands_LIndex_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz", "Qux")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := lindex(s, []string{"Foo", "1"})
+	response := lindex(s, c, []string{"Foo", "1"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -325,8 +325,8 @@ func TestCommands_LIndex_Success(t *testing.T) {
 
 func TestCommands_LIndex_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lindex(s, []string{"Foo", "0"})
+	c := newTestClient()
+	response := lindex(s, c, []string{"Foo", "0"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected NullBulkString, got %v", response.Type)
@@ -335,8 +335,8 @@ func TestCommands_LIndex_MissingKey(t *testing.T) {
 
 func TestCommands_LIndex_InvalidIndex(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lindex(s, []string{"Foo", "abc"})
+	c := newTestClient()
+	response := lindex(s, c, []string{"Foo", "abc"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -345,7 +345,7 @@ func TestCommands_LIndex_InvalidIndex(t *testing.T) {
 
 func TestCommands_LIndex_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -353,7 +353,7 @@ func TestCommands_LIndex_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := lindex(s, args)
+		response := lindex(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -363,13 +363,13 @@ func TestCommands_LIndex_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_LSet_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := lset(s, []string{"Foo", "1", "Qux"})
+	response := lset(s, c, []string{"Foo", "1", "Qux"})
 
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)
@@ -395,13 +395,13 @@ func TestCommands_LSet_Success(t *testing.T) {
 
 func TestCommands_LSet_InvalidIndex(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := lset(s, []string{"Foo", "10", "Baz"})
+	response := lset(s, c, []string{"Foo", "10", "Baz"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -410,8 +410,8 @@ func TestCommands_LSet_InvalidIndex(t *testing.T) {
 
 func TestCommands_LSet_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lset(s, []string{"Foo", "0", "Bar"})
+	c := newTestClient()
+	response := lset(s, c, []string{"Foo", "0", "Bar"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -420,7 +420,7 @@ func TestCommands_LSet_MissingKey(t *testing.T) {
 
 func TestCommands_LSet_InvalidArgumentCount(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -429,7 +429,7 @@ func TestCommands_LSet_InvalidArgumentCount(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := lset(s, args)
+		response := lset(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -439,8 +439,8 @@ func TestCommands_LSet_InvalidArgumentCount(t *testing.T) {
 
 func TestCommands_LSet_InvalidInteger(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := lset(s, []string{"Foo", "abc", "Bar"})
+	c := newTestClient()
+	response := lset(s, c, []string{"Foo", "abc", "Bar"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -449,13 +449,13 @@ func TestCommands_LSet_InvalidInteger(t *testing.T) {
 
 func TestCommands_LTrim_Success(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	_, err := s.store.RPush("Foo", "Bar", "Baz", "Qux")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	response := ltrim(s, []string{"Foo", "1", "2"})
+	response := ltrim(s, c, []string{"Foo", "1", "2"})
 
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)
@@ -485,8 +485,8 @@ func TestCommands_LTrim_Success(t *testing.T) {
 
 func TestCommands_LTrim_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := ltrim(s, []string{"Foo", "0", "-1"})
+	c := newTestClient()
+	response := ltrim(s, c, []string{"Foo", "0", "-1"})
 
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)
@@ -499,7 +499,7 @@ func TestCommands_LTrim_MissingKey(t *testing.T) {
 
 func TestCommands_LTrim_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo"},
@@ -508,7 +508,7 @@ func TestCommands_LTrim_InvalidArguments(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := ltrim(s, args)
+		response := ltrim(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -518,8 +518,8 @@ func TestCommands_LTrim_InvalidArguments(t *testing.T) {
 
 func TestCommands_LTrim_InvalidStart(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := ltrim(s, []string{"Foo", "abc", "2"})
+	c := newTestClient()
+	response := ltrim(s, c, []string{"Foo", "abc", "2"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -528,8 +528,8 @@ func TestCommands_LTrim_InvalidStart(t *testing.T) {
 
 func TestCommands_LTrim_InvalidEnd(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := ltrim(s, []string{"Foo", "0", "abc"})
+	c := newTestClient()
+	response := ltrim(s, c, []string{"Foo", "0", "abc"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)

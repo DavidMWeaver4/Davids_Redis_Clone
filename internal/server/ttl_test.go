@@ -12,8 +12,8 @@ func TestCommands_SetWithTTL_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := set(s, []string{"Foo", "Bar", "EX", "1"})
+	c := newTestClient()
+	response := set(s, c, []string{"Foo", "Bar", "EX", "1"})
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)
 	}
@@ -39,8 +39,8 @@ func TestCommands_SetWithTTL_InvalidOption(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := set(s, []string{"Foo", "Bar", "PX", "1000"})
+	c := newTestClient()
+	response := set(s, c, []string{"Foo", "Bar", "PX", "1000"})
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
 	}
@@ -50,8 +50,8 @@ func TestCommands_SetWithTTL_InvalidExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := set(s, []string{"Foo", "Bar", "EX", "abc"})
+	c := newTestClient()
+	response := set(s, c, []string{"Foo", "Bar", "EX", "abc"})
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
 	}
@@ -60,11 +60,11 @@ func TestCommands_SetWithTTL_NegativeExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := []string{"0", "-1"}
 	for _, seconds := range tests {
 		t.Run(seconds, func(t *testing.T) {
-			response := set(s, []string{"Foo", "Bar", "EX", seconds})
+			response := set(s, c, []string{"Foo", "Bar", "EX", seconds})
 			if response.Type != protocol.Error {
 				t.Fatalf("expected Error, got %v", response.Type)
 			}
@@ -76,8 +76,8 @@ func TestCommands_TTL_Success(t *testing.T) {
 		store: store.New(),
 	}
 	s.store.Set("Foo", "Bar", 5*time.Second)
-
-	response := ttl(s, []string{"Foo"})
+	c := newTestClient()
+	response := ttl(s, c, []string{"Foo"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -90,8 +90,8 @@ func TestCommands_TTL_NoExpiration(t *testing.T) {
 		store: store.New(),
 	}
 	s.store.Set("Foo", "Bar", 0)
-
-	response := ttl(s, []string{"Foo"})
+	c := newTestClient()
+	response := ttl(s, c, []string{"Foo"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -103,8 +103,8 @@ func TestCommands_TTL_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := ttl(s, []string{"Foo"})
+	c := newTestClient()
+	response := ttl(s, c, []string{"Foo"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -116,13 +116,14 @@ func TestCommands_TTL_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := ttl(s, args)
+		response := ttl(s, c, args)
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
 		}
@@ -133,8 +134,9 @@ func TestCommands_Expire_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
-	response := expire(s, []string{"Foo", "10"})
+	response := expire(s, c, []string{"Foo", "10"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -151,7 +153,8 @@ func TestCommands_Expire_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-	response := expire(s, []string{"Foo", "10"})
+	c := newTestClient()
+	response := expire(s, c, []string{"Foo", "10"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -163,8 +166,9 @@ func TestCommands_Expire_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
-	response := expire(s, []string{"Foo", "Bar", "10", "EXP"})
+	response := expire(s, c, []string{"Foo", "Bar", "10", "EXP"})
 	if response.Type != protocol.Error {
 		t.Fatalf("expected error, got %v", response.Type)
 	}
@@ -174,7 +178,8 @@ func TestCommands_Expire_InvalidExpiration(t *testing.T) {
 		store: store.New(),
 	}
 	s.store.Set("Foo", "Bar", 0)
-	response := expire(s, []string{"Foo", "x10x1x"})
+	c := newTestClient()
+	response := expire(s, c, []string{"Foo", "x10x1x"})
 	if response.Type != protocol.Error {
 		t.Fatalf("expected error, got %v", response.Type)
 	}
@@ -185,8 +190,8 @@ func TestCommands_Expire_NegativeExpiration(t *testing.T) {
 	}
 
 	s.store.Set("Foo", "Bar", 0)
-
-	response := expire(s, []string{"Foo", "-100"})
+	c := newTestClient()
+	response := expire(s, c, []string{"Foo", "-100"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -209,10 +214,10 @@ func TestCommands_Expire_ZeroExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := expire(s, []string{"Foo", "0"})
+	response := expire(s, c, []string{"Foo", "0"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -235,11 +240,11 @@ func TestCommands_Expire_ExpiredKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", time.Millisecond)
 	time.Sleep(2 * time.Millisecond)
 
-	response := expire(s, []string{"Foo", "10"})
+	response := expire(s, c, []string{"Foo", "10"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -255,7 +260,8 @@ func TestCommands_Persist_Success(t *testing.T) {
 		store: store.New(),
 	}
 	s.store.Set("Foo", "Bar", 10*time.Second)
-	response := persist(s, []string{"Foo"})
+	c := newTestClient()
+	response := persist(s, c, []string{"Foo"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -272,7 +278,8 @@ func TestCommands_Persist_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-	response := persist(s, []string{"Foo"})
+	c := newTestClient()
+	response := persist(s, c, []string{"Foo"})
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
 	}
@@ -285,8 +292,9 @@ func TestCommands_Persist_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 10*time.Second)
-	response := persist(s, []string{"Foo", "Bar", "10"})
+	response := persist(s, c, []string{"Foo", "Bar", "10"})
 	if response.Type != protocol.Error {
 		t.Fatalf("expected error, got %v", response.Type)
 	}
@@ -297,8 +305,8 @@ func TestCommands_Persist_AlreadyPersistent(t *testing.T) {
 		store: store.New(),
 	}
 	s.store.Set("Foo", "Bar", 0)
-
-	response := persist(s, []string{"Foo"})
+	c := newTestClient()
+	response := persist(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -311,11 +319,11 @@ func TestCommands_Persist_ExpiredKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", time.Millisecond)
 	time.Sleep(2 * time.Millisecond)
 
-	response := persist(s, []string{"Foo"})
+	response := persist(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)

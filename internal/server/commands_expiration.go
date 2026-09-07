@@ -7,7 +7,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
-func ttl(s *Server, args []string) protocol.Value {
+func ttl(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'TTL'")
 	}
@@ -15,7 +15,7 @@ func ttl(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(seconds))
 }
 
-func expire(s *Server, args []string) protocol.Value {
+func expire(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'EXPIRE'")
 	}
@@ -30,7 +30,7 @@ func expire(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(0)
 }
 
-func persist(s *Server, args []string) protocol.Value {
+func persist(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'PERSIST'")
 	}

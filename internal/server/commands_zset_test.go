@@ -10,8 +10,8 @@ import (
 
 func TestCommands_ZAdd(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zadd(s, []string{"scores", "10", "Alice"})
+	c := newTestClient()
+	response := zadd(s, c, []string{"scores", "10", "Alice"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -23,9 +23,9 @@ func TestCommands_ZAdd(t *testing.T) {
 
 func TestCommands_ZAdd_UpdateExistingMember(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	zadd(s, []string{"scores", "10", "Alice"})
-	response := zadd(s, []string{"scores", "20", "Alice"})
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	response := zadd(s, c, []string{"scores", "20", "Alice"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -37,7 +37,7 @@ func TestCommands_ZAdd_UpdateExistingMember(t *testing.T) {
 
 func TestCommands_ZAdd_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := []struct {
 		name string
 		args []string
@@ -62,7 +62,7 @@ func TestCommands_ZAdd_InvalidArguments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response := zadd(s, tt.args)
+			response := zadd(s, c, tt.args)
 
 			if response.Type != protocol.Error {
 				t.Fatalf("expected Error, got %v", response.Type)
@@ -73,10 +73,10 @@ func TestCommands_ZAdd_InvalidArguments(t *testing.T) {
 
 func TestCommands_ZScore(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10.5", "Alice"})
 
-	zadd(s, []string{"scores", "10.5", "Alice"})
-
-	response := zscore(s, []string{"scores", "Alice"})
+	response := zscore(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -88,8 +88,8 @@ func TestCommands_ZScore(t *testing.T) {
 
 func TestCommands_ZScore_MissingMember(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zscore(s, []string{"scores", "Alice"})
+	c := newTestClient()
+	response := zscore(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -98,7 +98,7 @@ func TestCommands_ZScore_MissingMember(t *testing.T) {
 
 func TestCommands_ZScore_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"scores"},
@@ -106,7 +106,7 @@ func TestCommands_ZScore_InvalidArguments(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := zscore(s, args)
+		response := zscore(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -116,11 +116,11 @@ func TestCommands_ZScore_InvalidArguments(t *testing.T) {
 
 func TestCommands_ZCard(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zcard(s, []string{"scores"})
+	response := zcard(s, c, []string{"scores"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -132,8 +132,8 @@ func TestCommands_ZCard(t *testing.T) {
 
 func TestCommands_ZCard_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zcard(s, []string{"scores"})
+	c := newTestClient()
+	response := zcard(s, c, []string{"scores"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -145,11 +145,11 @@ func TestCommands_ZCard_MissingKey(t *testing.T) {
 
 func TestCommands_ZRem(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrem(s, []string{"scores", "Alice"})
+	response := zrem(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -161,12 +161,12 @@ func TestCommands_ZRem(t *testing.T) {
 
 func TestCommands_ZRem_MultipleMembers(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
-
-	response := zrem(s, []string{"scores", "Alice", "Charlie"})
+	response := zrem(s, c, []string{"scores", "Alice", "Charlie"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -178,8 +178,8 @@ func TestCommands_ZRem_MultipleMembers(t *testing.T) {
 
 func TestCommands_ZRem_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zrem(s, []string{"scores"})
+	c := newTestClient()
+	response := zrem(s, c, []string{"scores"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -188,12 +188,12 @@ func TestCommands_ZRem_InvalidArguments(t *testing.T) {
 
 func TestCommands_ZRange(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "30", "Charlie"})
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "30", "Charlie"})
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrange(s, []string{"scores", "0", "2"})
+	response := zrange(s, c, []string{"scores", "0", "2"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -217,8 +217,8 @@ func TestCommands_ZRange(t *testing.T) {
 
 func TestCommands_ZRange_Empty(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zrange(s, []string{"scores", "0", "10"})
+	c := newTestClient()
+	response := zrange(s, c, []string{"scores", "0", "10"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -235,7 +235,7 @@ func TestCommands_ZRange_Empty(t *testing.T) {
 
 func TestCommands_ZRange_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := []struct {
 		name string
 		args []string
@@ -260,7 +260,7 @@ func TestCommands_ZRange_InvalidArguments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response := zrange(s, tt.args)
+			response := zrange(s, c, tt.args)
 
 			if response.Type != protocol.Error {
 				t.Fatalf("expected Error, got %v", response.Type)
@@ -271,12 +271,12 @@ func TestCommands_ZRange_InvalidArguments(t *testing.T) {
 
 func TestCommands_ZRange_NegativeIndexes(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
-
-	response := zrange(s, []string{"scores", "-2", "-1"})
+	response := zrange(s, c, []string{"scores", "-2", "-1"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -364,12 +364,12 @@ func TestScoreValue(t *testing.T) {
 }
 func TestCommands_ZRange_WithScores(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "30", "Charlie"})
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "30", "Charlie"})
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrange(s, []string{"scores", "0", "-1", "WITHSCORES"})
+	response := zrange(s, c, []string{"scores", "0", "-1", "WITHSCORES"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -396,8 +396,8 @@ func TestCommands_ZRange_WithScores(t *testing.T) {
 }
 func TestCommands_ZRange_InvalidOption(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zrange(s, []string{"scores", "0", "-1", "INVALID"})
+	c := newTestClient()
+	response := zrange(s, c, []string{"scores", "0", "-1", "INVALID"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -405,10 +405,10 @@ func TestCommands_ZRange_InvalidOption(t *testing.T) {
 }
 func TestCommands_ZRange_WithScores_CaseInsensitive(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-
-	response := zrange(s, []string{"scores", "0", "-1", "withscores"})
+	response := zrange(s, c, []string{"scores", "0", "-1", "withscores"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -428,11 +428,11 @@ func TestCommands_ZRange_WithScores_CaseInsensitive(t *testing.T) {
 }
 func TestCommands_ZRange_PastEnd(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrange(s, []string{"scores", "0", "10"})
+	response := zrange(s, c, []string{"scores", "0", "10"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -457,10 +457,10 @@ func TestCommands_ZRange_PastEnd(t *testing.T) {
 
 func TestCommands_ZRange_InvalidRange(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
 	tests := []struct {
 		name string
@@ -482,7 +482,7 @@ func TestCommands_ZRange_InvalidRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response := zrange(s, tt.args)
+			response := zrange(s, c, tt.args)
 
 			if response.Type != protocol.Array {
 				t.Fatalf("expected Array, got %v", response.Type)
@@ -501,8 +501,8 @@ func TestCommands_ZRange_InvalidRange(t *testing.T) {
 
 func TestCommands_ZRange_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zrange(s, []string{"scores", "0", "-1"})
+	c := newTestClient()
+	response := zrange(s, c, []string{"scores", "0", "-1"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -519,10 +519,10 @@ func TestCommands_ZRange_MissingKey(t *testing.T) {
 
 func TestCommands_ZRange_WrongType(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	s.store.Set("scores", "value", 0)
 
-	response := zrange(s, []string{"scores", "0", "-1"})
+	response := zrange(s, c, []string{"scores", "0", "-1"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -531,12 +531,12 @@ func TestCommands_ZRange_WrongType(t *testing.T) {
 
 func TestCommands_ZRange_WithScores_SubRange(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
-
-	response := zrange(s, []string{"scores", "1", "2", "WITHSCORES"})
+	response := zrange(s, c, []string{"scores", "1", "2", "WITHSCORES"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)
@@ -564,12 +564,12 @@ func TestCommands_ZRange_WithScores_SubRange(t *testing.T) {
 
 func TestCommands_ZRank(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "30", "Charlie"})
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "30", "Charlie"})
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrank(s, []string{"scores", "Bob"})
+	response := zrank(s, c, []string{"scores", "Bob"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -582,12 +582,12 @@ func TestCommands_ZRank(t *testing.T) {
 
 func TestCommands_ZRank_FirstMember(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
-
-	response := zrank(s, []string{"scores", "Alice"})
+	response := zrank(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -600,12 +600,12 @@ func TestCommands_ZRank_FirstMember(t *testing.T) {
 
 func TestCommands_ZRank_LastMember(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
+	zadd(s, c, []string{"scores", "30", "Charlie"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-	zadd(s, []string{"scores", "30", "Charlie"})
-
-	response := zrank(s, []string{"scores", "Charlie"})
+	response := zrank(s, c, []string{"scores", "Charlie"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -618,10 +618,10 @@ func TestCommands_ZRank_LastMember(t *testing.T) {
 
 func TestCommands_ZRank_MissingMember(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Alice"})
 
-	zadd(s, []string{"scores", "10", "Alice"})
-
-	response := zrank(s, []string{"scores", "Bob"})
+	response := zrank(s, c, []string{"scores", "Bob"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -630,8 +630,8 @@ func TestCommands_ZRank_MissingMember(t *testing.T) {
 
 func TestCommands_ZRank_MissingKey(t *testing.T) {
 	s := &Server{store: store.New()}
-
-	response := zrank(s, []string{"scores", "Alice"})
+	c := newTestClient()
+	response := zrank(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -640,7 +640,7 @@ func TestCommands_ZRank_MissingKey(t *testing.T) {
 
 func TestCommands_ZRank_InvalidArguments(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"scores"},
@@ -648,7 +648,7 @@ func TestCommands_ZRank_InvalidArguments(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		response := zrank(s, args)
+		response := zrank(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -658,10 +658,10 @@ func TestCommands_ZRank_InvalidArguments(t *testing.T) {
 
 func TestCommands_ZRank_WrongType(t *testing.T) {
 	s := &Server{store: store.New()}
-
+	c := newTestClient()
 	s.store.Set("scores", "value", 0)
 
-	response := zrank(s, []string{"scores", "Alice"})
+	response := zrank(s, c, []string{"scores", "Alice"})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -669,12 +669,12 @@ func TestCommands_ZRank_WrongType(t *testing.T) {
 }
 func TestCommands_ZRank_TiedScores(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "10", "Charlie"})
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "10", "Bob"})
 
-	zadd(s, []string{"scores", "10", "Charlie"})
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "10", "Bob"})
-
-	response := zrank(s, []string{"scores", "Bob"})
+	response := zrank(s, c, []string{"scores", "Bob"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -686,12 +686,12 @@ func TestCommands_ZRank_TiedScores(t *testing.T) {
 }
 func TestCommands_ZRangeByScore(t *testing.T) {
 	s := &Server{store: store.New()}
+	c := newTestClient()
+	zadd(s, c, []string{"scores", "30", "Charlie"})
+	zadd(s, c, []string{"scores", "10", "Alice"})
+	zadd(s, c, []string{"scores", "20", "Bob"})
 
-	zadd(s, []string{"scores", "30", "Charlie"})
-	zadd(s, []string{"scores", "10", "Alice"})
-	zadd(s, []string{"scores", "20", "Bob"})
-
-	response := zrangebyscore(s, []string{"scores", "10", "30", "0", "-1"})
+	response := zrangebyscore(s, c, []string{"scores", "10", "30", "0", "-1"})
 
 	if response.Type != protocol.Array {
 		t.Fatalf("expected Array, got %v", response.Type)

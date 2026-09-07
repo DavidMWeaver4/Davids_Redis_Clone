@@ -8,7 +8,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
-func incr(s *Server, args []string) protocol.Value {
+func incr(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'INCR'")
 	}
@@ -22,7 +22,7 @@ func incr(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(newValue)
 }
 
-func decr(s *Server, args []string) protocol.Value {
+func decr(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument for 'DECR'")
 	}
@@ -33,7 +33,7 @@ func decr(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(newValue)
 }
 
-func incrby(s *Server, args []string) protocol.Value {
+func incrby(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'INCRBY'")
 	}
@@ -48,7 +48,7 @@ func incrby(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(newValue)
 }
 
-func decrby(s *Server, args []string) protocol.Value {
+func decrby(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments for 'DECRBY'")
 	}

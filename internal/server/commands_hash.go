@@ -4,7 +4,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
-func hset(s *Server, args []string) protocol.Value {
+func hset(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments in 'HSET'")
 	}
@@ -15,7 +15,7 @@ func hset(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(success))
 }
 
-func hget(s *Server, args []string) protocol.Value {
+func hget(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments in 'HGET'")
 	}
@@ -29,7 +29,7 @@ func hget(s *Server, args []string) protocol.Value {
 	return protocol.NewBulkString(value)
 }
 
-func hdel(s *Server, args []string) protocol.Value {
+func hdel(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 2 {
 		return protocol.NewError("need at least 2 arguments in 'HDEL'")
 	}
@@ -40,7 +40,7 @@ func hdel(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(removed))
 }
 
-func hexists(s *Server, args []string) protocol.Value {
+func hexists(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments in 'HEXISTS'")
 	}
@@ -54,7 +54,7 @@ func hexists(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(1)
 }
 
-func hlen(s *Server, args []string) protocol.Value {
+func hlen(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument in 'HLEN'")
 	}
@@ -65,7 +65,7 @@ func hlen(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(length))
 }
 
-func hgetall(s *Server, args []string) protocol.Value {
+func hgetall(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument in 'HGETALL'")
 	}

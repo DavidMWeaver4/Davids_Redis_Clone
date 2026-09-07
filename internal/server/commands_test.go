@@ -9,8 +9,8 @@ import (
 
 func TestCommands_Ping_Success(t *testing.T) {
 	s := &Server{}
-
-	got := ping(s, nil)
+	c := newTestClient()
+	got := ping(s, c, nil)
 
 	if got.Type != protocol.SimpleString {
 		t.Fatalf("expected type %v, got %v", protocol.SimpleString, got.Type)
@@ -25,7 +25,8 @@ func TestCommands_Set_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-	response := set(s, []string{"Foo", "Bar"})
+	c := newTestClient()
+	response := set(s, c, []string{"Foo", "Bar"})
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)
 	}
@@ -47,7 +48,7 @@ func TestCommands_Set_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := []struct {
 		name string
 		args []string
@@ -68,7 +69,7 @@ func TestCommands_Set_InvalidArgumentCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := set(s, tt.args)
+			got := set(s, c, tt.args)
 
 			if got.Type != protocol.Error {
 				t.Fatalf("expected Error, got %v", got.Type)
@@ -80,10 +81,10 @@ func TestCommands_Get_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := get(s, []string{"Foo"})
+	response := get(s, c, []string{"Foo"})
 
 	if response.Type != protocol.BulkString {
 		t.Fatalf("expected BulkString, got %v", response.Type)
@@ -98,8 +99,8 @@ func TestCommands_Get_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := get(s, []string{"Foo"})
+	c := newTestClient()
+	response := get(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Null {
 		t.Fatalf("expected Null, got %v", response.Type)
@@ -110,14 +111,14 @@ func TestCommands_Get_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	tests := [][]string{
 		{},
 		{"Foo", "Bar"},
 	}
 
 	for _, args := range tests {
-		response := get(s, args)
+		response := get(s, c, args)
 
 		if response.Type != protocol.Error {
 			t.Fatalf("expected Error, got %v", response.Type)
@@ -129,10 +130,10 @@ func TestCommands_Del_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := deleteCommand(s, []string{"Foo"})
+	response := deleteCommand(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -155,8 +156,8 @@ func TestCommands_Del_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := deleteCommand(s, []string{"Foo"})
+	c := newTestClient()
+	response := deleteCommand(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -171,8 +172,8 @@ func TestCommands_Del_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := deleteCommand(s, []string{})
+	c := newTestClient()
+	response := deleteCommand(s, c, []string{})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -183,10 +184,10 @@ func TestCommands_Exists_Success(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 
-	response := exists(s, []string{"Foo"})
+	response := exists(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -201,8 +202,8 @@ func TestCommands_Exists_MissingKey(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := exists(s, []string{"Foo"})
+	c := newTestClient()
+	response := exists(s, c, []string{"Foo"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -217,8 +218,8 @@ func TestCommands_Exists_InvalidArgumentCount(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := exists(s, []string{})
+	c := newTestClient()
+	response := exists(s, c, []string{})
 
 	if response.Type != protocol.Error {
 		t.Fatalf("expected Error, got %v", response.Type)
@@ -228,11 +229,11 @@ func TestCommands_Del_MultipleKeys(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 	s.store.Set("Baz", "Qux", 0)
 
-	response := deleteCommand(s, []string{"Foo", "Baz", "Missing"})
+	response := deleteCommand(s, c, []string{"Foo", "Baz", "Missing"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -262,11 +263,11 @@ func TestCommands_Exists_MultipleKeys(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
+	c := newTestClient()
 	s.store.Set("Foo", "Bar", 0)
 	s.store.Set("Baz", "Qux", 0)
 
-	response := exists(s, []string{"Foo", "Baz", "Missing"})
+	response := exists(s, c, []string{"Foo", "Baz", "Missing"})
 
 	if response.Type != protocol.Integer {
 		t.Fatalf("expected Integer, got %v", response.Type)
@@ -281,8 +282,8 @@ func TestCommands_Set_WithExpiration(t *testing.T) {
 	s := &Server{
 		store: store.New(),
 	}
-
-	response := set(s, []string{"Foo", "Bar", "EX", "10"})
+	c := newTestClient()
+	response := set(s, c, []string{"Foo", "Bar", "EX", "10"})
 
 	if response.Type != protocol.SimpleString {
 		t.Fatalf("expected SimpleString, got %v", response.Type)

@@ -9,7 +9,7 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
-func zadd(s *Server, args []string) protocol.Value {
+func zadd(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments in 'ZADD'")
 	}
@@ -24,7 +24,7 @@ func zadd(s *Server, args []string) protocol.Value {
 	return protocol.NewInteger(int64(statusCode))
 }
 
-func zscore(s *Server, args []string) protocol.Value {
+func zscore(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments in 'ZSCORE'")
 	}
@@ -37,7 +37,7 @@ func zscore(s *Server, args []string) protocol.Value {
 	}
 	return scoreValue(score)
 }
-func zcard(s *Server, args []string) protocol.Value {
+func zcard(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 1 {
 		return protocol.NewError("need 1 argument in 'ZCARD'")
 	}
@@ -47,7 +47,7 @@ func zcard(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(int64(length))
 }
-func zrem(s *Server, args []string) protocol.Value {
+func zrem(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 2 {
 		return protocol.NewError("need at least 2 arguments in 'ZREM'")
 	}
@@ -57,7 +57,7 @@ func zrem(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(int64(removed))
 }
-func zrange(s *Server, args []string) protocol.Value {
+func zrange(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 && len(args) != 4 {
 		return protocol.NewError("need 3 or 4 arguments in 'ZRANGE'")
 	}
@@ -89,7 +89,7 @@ func zrange(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewArray(results)
 }
-func zrank(s *Server, args []string) protocol.Value {
+func zrank(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments in 'ZRANK'")
 	}
@@ -102,7 +102,7 @@ func zrank(s *Server, args []string) protocol.Value {
 	}
 	return protocol.NewInteger(int64(rank))
 }
-func zincrby(s *Server, args []string) protocol.Value {
+func zincrby(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 {
 		return protocol.NewError("need 3 arguments in 'ZINCRBY'")
 	}
@@ -116,7 +116,7 @@ func zincrby(s *Server, args []string) protocol.Value {
 	}
 	return scoreValue(newScore)
 }
-func zrangebyscore(s *Server, args []string) protocol.Value {
+func zrangebyscore(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 5 {
 		return protocol.NewError("need 5 arguments in 'ZRANGEBYSCORE'")
 	}
