@@ -2,24 +2,34 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"log"
 	"net"
+	"sync"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
 type Server struct {
-	addr  string
-	store *store.Store
+	addr     string
+	store    *store.Store
+	listener net.Listener
+
+	wg sync.WaitGroup
+
+	mu           sync.Mutex
+	clients      map[net.Conn]*Client
+	shuttingDown bool
 }
 
 func New(addr string, s *store.Store) *Server {
 	return &Server{
-		addr:  addr,
-		store: s,
+		addr:    addr,
+		store:   s,
+		clients: make(map[net.Conn]*Client),
 	}
 }
 
@@ -28,25 +38,46 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	s.mu.Lock()
+	s.listener = listener
+	s.mu.Unlock()
 	log.Printf("Redis clone listening on %s", s.addr)
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			log.Printf("error: %v", err)
+			return err
+		}
+		client := &Client{conn: conn}
+		s.mu.Lock()
+		if s.shuttingDown {
+			s.mu.Unlock()
+			conn.Close()
 			continue
 		}
-
-		go s.handleClient(conn)
+		s.clients[conn] = client
+		s.wg.Add(1)
+		s.mu.Unlock()
+		go func() {
+			defer s.wg.Done()
+			s.handleClient(client)
+		}()
 	}
 }
 
-func (s *Server) handleClient(conn net.Conn) {
-	defer conn.Close()
-	client := &Client{
-		conn: conn,
-	}
-	reader := bufio.NewReader(conn)
+func (s *Server) handleClient(client *Client) {
+	defer client.conn.Close()
+	defer func() {
+		s.mu.Lock()
+		delete(s.clients, client.conn)
+		s.mu.Unlock()
+	}()
+
+	reader := bufio.NewReader(client.conn)
 
 	for {
 		value, err := protocol.Read(reader)
@@ -59,10 +90,41 @@ func (s *Server) handleClient(conn net.Conn) {
 		}
 
 		response := s.execute(client, value)
-		err = protocol.Write(conn, response)
+		err = protocol.Write(client.conn, response)
 		if err != nil {
 			log.Printf("client error: %v", err)
 			return
 		}
+	}
+}
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.mu.Lock()
+	s.shuttingDown = true
+	listener := s.listener
+	s.mu.Unlock()
+	if listener != nil {
+		_ = listener.Close()
+	}
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		s.mu.Lock()
+		clients := make([]*Client, 0, len(s.clients))
+		for _, client := range s.clients {
+			clients = append(clients, client)
+		}
+		s.mu.Unlock()
+
+		for _, client := range clients {
+			_ = client.conn.Close()
+		}
+		<-done
+		return ctx.Err()
 	}
 }

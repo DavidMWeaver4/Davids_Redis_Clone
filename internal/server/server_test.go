@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -10,8 +11,33 @@ import (
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
 
+func newTestConnection(t *testing.T, server *Server) (net.Conn, *bufio.Reader, <-chan struct{}) {
+	t.Helper()
+
+	serverConn, clientConn := net.Pipe()
+	client := &Client{conn: serverConn}
+	done := make(chan struct{})
+
+	server.mu.Lock()
+	server.clients[serverConn] = client
+	server.wg.Add(1)
+	server.mu.Unlock()
+
+	go func() {
+		defer server.wg.Done()
+		server.handleClient(client)
+		close(done)
+	}()
+	reader := bufio.NewReader(clientConn)
+	t.Cleanup(func() {
+		clientConn.Close()
+	})
+	return clientConn, reader, done
+}
 func TestServer_HandleClient_Ping(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 	err := protocol.Write(clientConn, protocol.NewArray([]protocol.Value{
 		protocol.NewBulkString("PING"),
@@ -40,7 +66,9 @@ func TestServer_HandleClient_Ping(t *testing.T) {
 	}
 }
 func TestServer_HandleClient_SetGet(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	setCommand := protocol.NewArray([]protocol.Value{
@@ -89,7 +117,9 @@ func TestServer_HandleClient_SetGet(t *testing.T) {
 	}
 }
 func TestServer_HandleClient_MultipleCommands(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 	tests := []struct {
 		command protocol.Value
@@ -144,7 +174,9 @@ func TestServer_HandleClient_MultipleCommands(t *testing.T) {
 }
 
 func TestServer_HandleClient_InvalidRESP(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	_, err := clientConn.Write([]byte("@invalid\r\n"))
@@ -165,7 +197,9 @@ func TestServer_HandleClient_InvalidRESP(t *testing.T) {
 }
 
 func TestServer_HandleClient_InvalidCommandType(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	command := protocol.NewArray([]protocol.Value{
@@ -195,7 +229,9 @@ func TestServer_HandleClient_InvalidCommandType(t *testing.T) {
 }
 
 func TestServer_HandleClient_EmptyCommand(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	command := protocol.NewArray([]protocol.Value{})
@@ -223,7 +259,9 @@ func TestServer_HandleClient_EmptyCommand(t *testing.T) {
 }
 
 func TestServer_HandleClient_ConnectionClosing(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, _, done := newTestConnection(t, server)
 
 	clientConn.Close()
@@ -235,7 +273,9 @@ func TestServer_HandleClient_ConnectionClosing(t *testing.T) {
 }
 
 func TestServer_HandleClient_SetWithTTL(t *testing.T) {
-	server := New("", store.New())
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	_, err := clientConn.Write([]byte(
@@ -282,17 +322,196 @@ func TestServer_HandleClient_SetWithTTL(t *testing.T) {
 	}
 }
 
-func newTestConnection(t *testing.T, server *Server) (net.Conn, *bufio.Reader, <-chan struct{}) {
-	t.Helper()
+func TestServer_Shutdown_NoClients(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err := server.Shutdown(ctx)
+	if err != nil {
+		t.Fatalf("expected shutdown to succeed, got: %v", err)
+	}
+}
+func TestServer_Shutdown_DrainsClients(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
+
 	serverConn, clientConn := net.Pipe()
+	client := &Client{conn: serverConn}
+
+	server.mu.Lock()
+	server.clients[serverConn] = client
+	server.wg.Add(1)
+	server.mu.Unlock()
+
 	done := make(chan struct{})
+
 	go func() {
-		server.handleClient(serverConn)
+		server.handleClient(client)
+		server.wg.Done()
 		close(done)
 	}()
-	reader := bufio.NewReader(clientConn)
-	t.Cleanup(func() {
-		clientConn.Close()
-	})
-	return clientConn, reader, done
+
+	shutdownDone := make(chan error)
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		shutdownDone <- server.Shutdown(ctx)
+	}()
+	select {
+	case err := <-shutdownDone:
+		t.Fatalf("shutdown completed before client disconnected: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	clientConn.Close()
+
+	select {
+	case err := <-shutdownDone:
+		if err != nil {
+			t.Fatalf("expected graceful shutdown, got: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("shutdown did not complete")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("server did not close client connection")
+	}
+}
+func TestServer_Shutdown_SetsShuttingDown(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
+
+	server.mu.Lock()
+	initiallyShuttingDown := server.shuttingDown
+	server.mu.Unlock()
+
+	if initiallyShuttingDown {
+		t.Fatal("server should not initially be shutting down")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err := server.Shutdown(ctx)
+	if err != nil {
+		t.Fatalf("expected shutdown to succeed, got: %v", err)
+	}
+	server.mu.Lock()
+	got := server.shuttingDown
+	server.mu.Unlock()
+	if !got {
+		t.Fatal("expected server to be marked as shutting down")
+	}
+}
+func TestServer_ListenAndServe_Shutdown(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("127.0.0.1:0", s)
+
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- server.ListenAndServe()
+	}()
+
+	var addr string
+
+	deadline := time.Now().Add(time.Second)
+
+	for time.Now().Before(deadline) {
+		server.mu.Lock()
+
+		if server.listener != nil {
+			addr = server.listener.Addr().String()
+		}
+
+		server.mu.Unlock()
+
+		if addr != "" {
+			break
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	if addr == "" {
+		t.Fatal("server listener was not initialized")
+	}
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatalf("failed to connect to server: %v", err)
+	}
+
+	conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err = server.Shutdown(ctx)
+	if err != nil {
+		t.Fatalf("expected graceful shutdown, got: %v", err)
+	}
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("expected ListenAndServe to return nil, got: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("ListenAndServe did not return")
+	}
+}
+
+func TestServer_Shutdown_ForceClosesClients(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s)
+
+	serverConn, clientConn := net.Pipe()
+	client := &Client{conn: serverConn}
+
+	server.mu.Lock()
+	server.clients[serverConn] = client
+	server.wg.Add(1)
+	server.mu.Unlock()
+
+	done := make(chan struct{})
+
+	go func() {
+		server.handleClient(client)
+		server.wg.Done()
+		close(done)
+	}()
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		50*time.Millisecond,
+	)
+	defer cancel()
+
+	err := server.Shutdown(ctx)
+
+	if err != context.DeadlineExceeded {
+		t.Fatalf("expected context deadline exceeded, got: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("server client handler did not exit")
+	}
+
+	clientConn.Close()
 }
