@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 
@@ -99,6 +100,9 @@ func (s *Server) execute(client *Client, command protocol.Value) protocol.Value 
 	if !ok {
 		return protocol.NewError("invalid command")
 	}
+	if isWriteCommand(commandName) && s.persistenceUnavailable() {
+		return protocol.NewError("persistence unavailable")
+	}
 	if client.inTransaction &&
 		commandName != "MULTI" &&
 		commandName != "EXEC" &&
@@ -107,7 +111,15 @@ func (s *Server) execute(client *Client, command protocol.Value) protocol.Value 
 		client.queue = append(client.queue, command)
 		return protocol.NewSimpleString("QUEUED")
 	}
-	return handler(s, client, args)
+	response := handler(s, client, args)
+	if isWriteCommand(commandName) && response.Type != protocol.Error {
+		err := s.appendAOF(command)
+		if err != nil {
+			s.markPersistenceFailed(err)
+			return protocol.NewError("persistence failure")
+		}
+	}
+	return response
 }
 
 /*
@@ -131,4 +143,39 @@ func parseFloat64Helper(value string) (float64, error) {
 		return 0, ErrInvalidFloat
 	}
 	return value64, nil
+}
+func (s *Server) appendAOF(command protocol.Value) error {
+	if s.aof == nil {
+		return nil
+	}
+	return s.aof.Append(command)
+}
+func isWriteCommand(commandName string) bool {
+	switch commandName {
+	case "SET", "DEL", "EXPIRE", "PERSIST",
+		"INCR", "DECR", "INCRBY", "DECRBY",
+		"APPEND", "SETNX", "MSET",
+		"LPUSH", "RPUSH", "LPOP", "RPOP",
+		"LSET", "LTRIM",
+		"HSET", "HDEL",
+		"ZADD", "ZREM", "ZINCRBY":
+		return true
+	default:
+		return false
+	}
+}
+func (s *Server) persistenceUnavailable() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.persistenceFailed
+}
+
+func (s *Server) markPersistenceFailed(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.persistenceFailed {
+		log.Printf("AOF append failed: %v", err)
+		s.persistenceFailed = true
+	}
 }

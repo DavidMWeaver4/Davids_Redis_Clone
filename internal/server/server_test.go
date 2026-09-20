@@ -37,7 +37,7 @@ func newTestConnection(t *testing.T, server *Server) (net.Conn, *bufio.Reader, <
 func TestServer_HandleClient_Ping(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 	err := protocol.Write(clientConn, protocol.NewArray([]protocol.Value{
 		protocol.NewBulkString("PING"),
@@ -68,7 +68,7 @@ func TestServer_HandleClient_Ping(t *testing.T) {
 func TestServer_HandleClient_SetGet(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	setCommand := protocol.NewArray([]protocol.Value{
@@ -119,7 +119,7 @@ func TestServer_HandleClient_SetGet(t *testing.T) {
 func TestServer_HandleClient_MultipleCommands(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 	tests := []struct {
 		command protocol.Value
@@ -176,7 +176,7 @@ func TestServer_HandleClient_MultipleCommands(t *testing.T) {
 func TestServer_HandleClient_InvalidRESP(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	_, err := clientConn.Write([]byte("@invalid\r\n"))
@@ -199,7 +199,7 @@ func TestServer_HandleClient_InvalidRESP(t *testing.T) {
 func TestServer_HandleClient_InvalidCommandType(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	command := protocol.NewArray([]protocol.Value{
@@ -231,7 +231,7 @@ func TestServer_HandleClient_InvalidCommandType(t *testing.T) {
 func TestServer_HandleClient_EmptyCommand(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	command := protocol.NewArray([]protocol.Value{})
@@ -261,7 +261,7 @@ func TestServer_HandleClient_EmptyCommand(t *testing.T) {
 func TestServer_HandleClient_ConnectionClosing(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, _, done := newTestConnection(t, server)
 
 	clientConn.Close()
@@ -275,7 +275,7 @@ func TestServer_HandleClient_ConnectionClosing(t *testing.T) {
 func TestServer_HandleClient_SetWithTTL(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 	clientConn, reader, done := newTestConnection(t, server)
 
 	_, err := clientConn.Write([]byte(
@@ -325,7 +325,7 @@ func TestServer_HandleClient_SetWithTTL(t *testing.T) {
 func TestServer_Shutdown_NoClients(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -338,7 +338,7 @@ func TestServer_Shutdown_NoClients(t *testing.T) {
 func TestServer_Shutdown_DrainsClients(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 
 	serverConn, clientConn := net.Pipe()
 	client := &Client{conn: serverConn}
@@ -390,7 +390,7 @@ func TestServer_Shutdown_DrainsClients(t *testing.T) {
 func TestServer_Shutdown_SetsShuttingDown(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 
 	server.mu.Lock()
 	initiallyShuttingDown := server.shuttingDown
@@ -417,7 +417,7 @@ func TestServer_Shutdown_SetsShuttingDown(t *testing.T) {
 func TestServer_ListenAndServe_Shutdown(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("127.0.0.1:0", s)
+	server := New("127.0.0.1:0", s, nil)
 
 	errCh := make(chan error, 1)
 
@@ -477,7 +477,7 @@ func TestServer_ListenAndServe_Shutdown(t *testing.T) {
 func TestServer_Shutdown_ForceClosesClients(t *testing.T) {
 	s := store.New()
 	t.Cleanup(s.Close)
-	server := New("", s)
+	server := New("", s, nil)
 
 	serverConn, clientConn := net.Pipe()
 	client := &Client{conn: serverConn}

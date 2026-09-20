@@ -9,6 +9,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/persistence"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
@@ -23,13 +24,17 @@ type Server struct {
 	mu           sync.Mutex
 	clients      map[net.Conn]*Client
 	shuttingDown bool
+
+	aof               *persistence.AOF
+	persistenceFailed bool
 }
 
-func New(addr string, s *store.Store) *Server {
+func New(addr string, s *store.Store, aof *persistence.AOF) *Server {
 	return &Server{
 		addr:    addr,
 		store:   s,
 		clients: make(map[net.Conn]*Client),
+		aof:     aof,
 	}
 }
 
