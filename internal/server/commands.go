@@ -179,3 +179,12 @@ func (s *Server) markPersistenceFailed(err error) {
 		s.persistenceFailed = true
 	}
 }
+func (s *Server) monitorPersistence() {
+	if s.aof == nil {
+		return
+	}
+
+	for err := range s.aof.Errors() {
+		s.markPersistenceFailed(err)
+	}
+}

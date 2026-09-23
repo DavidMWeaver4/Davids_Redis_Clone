@@ -314,3 +314,189 @@ func TestAOF_ConcurrentAppend(t *testing.T) {
 		t.Fatalf("file length = %d, want %d", len(data), expectedLength)
 	}
 }
+
+func TestAOF_FsyncEverySec(t *testing.T) {
+	path := "test_everysec.aof"
+
+	filePath, err := validatePath(path)
+	if err != nil {
+		t.Fatalf("validatePath() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		os.Remove(filePath)
+	})
+
+	aof, err := NewAOF(AOFConfig{
+		Path:        path,
+		FsyncPolicy: FsyncEverySec,
+	})
+	if err != nil {
+		t.Fatalf("NewAOF() error = %v", err)
+	}
+	defer aof.Close()
+
+	if aof.policy != FsyncEverySec {
+		t.Fatalf("policy = %v, want %v", aof.policy, FsyncEverySec)
+	}
+
+	if aof.stop == nil {
+		t.Fatal("expected stop channel to be initialized")
+	}
+
+	if aof.errors == nil {
+		t.Fatal("expected errors channel to be initialized")
+	}
+
+	if aof.file == nil {
+		t.Fatal("expected AOF file to be open")
+	}
+}
+
+func TestAOF_Errors(t *testing.T) {
+	path := "test_errors.aof"
+
+	filePath, err := validatePath(path)
+	if err != nil {
+		t.Fatalf("validatePath() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		os.Remove(filePath)
+	})
+
+	aof, err := NewAOF(AOFConfig{
+		Path:        path,
+		FsyncPolicy: FsyncEverySec,
+	})
+	if err != nil {
+		t.Fatalf("NewAOF() error = %v", err)
+	}
+	defer aof.Close()
+
+	errorsChannel := aof.Errors()
+
+	if errorsChannel == nil {
+		t.Fatal("expected errors channel")
+	}
+}
+
+func TestAOF_Close_EverySec(t *testing.T) {
+	path := "test_close_everysec.aof"
+
+	filePath, err := validatePath(path)
+	if err != nil {
+		t.Fatalf("validatePath() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		os.Remove(filePath)
+	})
+
+	aof, err := NewAOF(AOFConfig{
+		Path:        path,
+		FsyncPolicy: FsyncEverySec,
+	})
+	if err != nil {
+		t.Fatalf("NewAOF() error = %v", err)
+	}
+
+	if err := aof.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	if aof.file != nil {
+		t.Fatal("expected AOF file to be closed")
+	}
+
+	select {
+	case _, ok := <-aof.Errors():
+		if ok {
+			t.Fatal("expected errors channel to be closed")
+		}
+	default:
+		t.Fatal("expected errors channel to be closed")
+	}
+}
+
+func TestAOF_Close_NoFsyncGoroutine(t *testing.T) {
+	path := "test_close_nofsync.aof"
+
+	filePath, err := validatePath(path)
+	if err != nil {
+		t.Fatalf("validatePath() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		os.Remove(filePath)
+	})
+
+	aof, err := NewAOF(AOFConfig{
+		Path:        path,
+		FsyncPolicy: FsyncNo,
+	})
+	if err != nil {
+		t.Fatalf("NewAOF() error = %v", err)
+	}
+
+	if aof.stop != nil {
+		t.Fatal("expected stop channel to be nil")
+	}
+
+	if err := aof.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	if aof.file != nil {
+		t.Fatal("expected AOF file to be closed")
+	}
+}
+
+func TestAOF_EverySecWritesSuccessfully(t *testing.T) {
+	path := "test_everysec_write.aof"
+
+	filePath, err := validatePath(path)
+	if err != nil {
+		t.Fatalf("validatePath() error = %v", err)
+	}
+
+	t.Cleanup(func() {
+		os.Remove(filePath)
+	})
+
+	aof, err := NewAOF(AOFConfig{
+		Path:        path,
+		FsyncPolicy: FsyncEverySec,
+	})
+	if err != nil {
+		t.Fatalf("NewAOF() error = %v", err)
+	}
+	defer aof.Close()
+
+	command := protocol.NewArray([]protocol.Value{
+		protocol.NewBulkString("SET"),
+		protocol.NewBulkString("name"),
+		protocol.NewBulkString("David"),
+	})
+
+	if err := aof.Append(command); err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	expected := "*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$5\r\nDavid\r\n"
+
+	if string(data) != expected {
+		t.Fatalf("file contents = %q, want %q", string(data), expected)
+	}
+
+	select {
+	case err := <-aof.Errors():
+		t.Fatalf("unexpected fsync error: %v", err)
+	default:
+	}
+}

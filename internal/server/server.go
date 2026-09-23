@@ -46,6 +46,10 @@ func (s *Server) ListenAndServe() error {
 	s.mu.Lock()
 	s.listener = listener
 	s.mu.Unlock()
+
+	if s.aof != nil {
+		go s.monitorPersistence()
+	}
 	log.Printf("Redis clone listening on %s", s.addr)
 
 	for {

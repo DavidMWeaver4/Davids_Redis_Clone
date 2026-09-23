@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
@@ -35,6 +36,11 @@ type AOF struct {
 	mu     sync.Mutex
 	file   *os.File
 	policy FsyncPolicy
+
+	stop      chan struct{}
+	wg        sync.WaitGroup
+	closeOnce sync.Once
+	errors    chan error
 }
 
 func NewAOF(config AOFConfig) (*AOF, error) {
@@ -63,13 +69,50 @@ func NewAOF(config AOFConfig) (*AOF, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	aof.file = file
+	aof.errors = make(chan error, 1)
+
+	if aof.policy == FsyncEverySec {
+		aof.stop = make(chan struct{})
+
+		ticker := time.NewTicker(1 * time.Second)
+		aof.wg.Add(1)
+
+		go func() {
+			defer ticker.Stop()
+			defer aof.wg.Done()
+
+			for {
+				select {
+				case <-aof.stop:
+					return
+
+				case <-ticker.C:
+					aof.mu.Lock()
+
+					if aof.file != nil {
+						syncErr := aof.file.Sync()
+						if syncErr != nil {
+							select {
+							case aof.errors <- syncErr:
+							default:
+							}
+						}
+					}
+					aof.mu.Unlock()
+				}
+			}
+		}()
+	}
 	return &aof, nil
+}
+func (a *AOF) Errors() <-chan error {
+	return a.errors
 }
 func (a *AOF) Append(command protocol.Value) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-
 	if a.file == nil {
 		return ErrAOFClosed
 	}
@@ -82,21 +125,38 @@ func (a *AOF) Append(command protocol.Value) error {
 	}
 	return nil
 }
+
 func (a *AOF) Close() error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	var closeErr error
 
-	if a.file == nil {
-		return nil
-	}
+	a.closeOnce.Do(func() {
+		if a.policy == FsyncEverySec {
+			close(a.stop)
+			a.wg.Wait()
+		}
 
-	if err := a.file.Sync(); err != nil {
-		return err
-	}
+		a.mu.Lock()
+		defer a.mu.Unlock()
 
-	err := a.file.Close()
-	a.file = nil
-	return err
+		if a.file == nil {
+			close(a.errors)
+			return
+		}
+
+		syncErr := a.file.Sync()
+		fileCloseErr := a.file.Close()
+		a.file = nil
+
+		if syncErr != nil {
+			closeErr = syncErr
+		} else if fileCloseErr != nil {
+			closeErr = fileCloseErr
+		}
+
+		close(a.errors)
+	})
+
+	return closeErr
 }
 func validatePath(fp string) (string, error) {
 

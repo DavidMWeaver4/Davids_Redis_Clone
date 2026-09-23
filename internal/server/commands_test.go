@@ -3,6 +3,7 @@ package server
 import (
 	"testing"
 
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/persistence"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/store"
 )
@@ -297,5 +298,43 @@ func TestCommands_Set_WithExpiration(t *testing.T) {
 
 	if ttl <= 0 {
 		t.Fatalf("expected positive TTL, got %d", ttl)
+	}
+}
+
+func TestServer_MarkPersistenceFailed(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s, nil)
+
+	server.mu.Lock()
+	initiallyFailed := server.persistenceFailed
+	server.mu.Unlock()
+
+	if initiallyFailed {
+		t.Fatal("server should not initially have persistence marked as failed")
+	}
+
+	server.markPersistenceFailed(persistence.ErrAOFClosed)
+
+	server.mu.Lock()
+	got := server.persistenceFailed
+	server.mu.Unlock()
+
+	if !got {
+		t.Fatal("expected persistence to be marked as failed")
+	}
+}
+
+func TestServer_PersistenceUnavailable(t *testing.T) {
+	s := store.New()
+	t.Cleanup(s.Close)
+	server := New("", s, nil)
+
+	server.mu.Lock()
+	server.persistenceFailed = true
+	server.mu.Unlock()
+
+	if !server.persistenceUnavailable() {
+		t.Fatal("expected persistence to be unavailable")
 	}
 }
