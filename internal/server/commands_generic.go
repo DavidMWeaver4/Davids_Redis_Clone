@@ -1,22 +1,36 @@
 package server
 
-import "github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
+import (
+	"errors"
+
+	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
+)
 
 func ping(s *Server, client *Client, args []string) protocol.Value {
 	return protocol.NewSimpleString("PONG")
 }
 
 func deleteCommand(s *Server, client *Client, args []string) protocol.Value {
+	deleted, err := s.executeDeleteCommand(args)
+	if err != nil {
+		return protocol.NewError(err.Error())
+	}
+	return protocol.NewInteger(int64(deleted))
+}
+func (s *Server) executeDeleteCommand(args []string) (int, error) {
 	if len(args) < 1 {
-		return protocol.NewError("need at least 1 argument for 'DEL'")
+		return 0, errors.New("need at least 1 argument for 'DEL'")
 	}
 	deleted := 0
 	for _, key := range args {
 		deleted += s.store.Delete(key)
 	}
-	return protocol.NewInteger(int64(deleted))
+	return deleted, nil
 }
-
+func (s *Server) replayDeleteCommand(args []string) error {
+	_, err := s.executeDeleteCommand(args)
+	return err
+}
 func exists(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) < 1 {
 		return protocol.NewError("need at least 1 argument for 'EXISTS'")

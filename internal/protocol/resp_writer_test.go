@@ -106,3 +106,16 @@ func TestWrite_UnknownType_ReturnsError(t *testing.T) {
 		t.Fatal("expected an error for an unknown RESP type")
 	}
 }
+func TestWrite_NullArray_Success(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := Write(&buf, NewNullArray())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := "*-1\r\n"
+	if buf.String() != expected {
+		t.Fatalf("expected %q, got %q", expected, buf.String())
+	}
+}

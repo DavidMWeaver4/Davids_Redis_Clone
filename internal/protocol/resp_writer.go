@@ -24,6 +24,9 @@ func Write(w io.Writer, v Value) error {
 		return err
 	case Array:
 		return writeArray(w, v.Array)
+	case NullArray:
+		_, err := fmt.Fprint(w, "*-1\r\n")
+		return err
 	default:
 		return fmt.Errorf("ERR unknown RESP type %s", v.Type)
 	}

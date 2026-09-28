@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/persistence"
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/server"
@@ -17,15 +16,20 @@ func main() {
 	s := store.New()
 	defer s.Close()
 	aof, err := persistence.NewAOF(persistence.AOFConfig{
-		Path:        "appendonly.aof",
-		FsyncPolicy: persistence.FsyncEverySec,
+		Path:        aofFilePath,
+		FsyncPolicy: fsyncPolicy,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer aof.Close()
 
-	srv := server.New(":6379", s, aof)
+	srv := server.New(serverAddr, s, aof)
+	err = persistence.Replay(aofFilePath, srv.ReplayCommand)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil {
@@ -36,7 +40,7 @@ func main() {
 	defer stop()
 	<-ctx.Done()
 	log.Printf("server shutdown signal acknowledged")
-	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdown, cancel := context.WithTimeout(context.Background(), shutdownTime)
 	defer cancel()
 	err = srv.Shutdown(shutdown)
 	if err != nil {

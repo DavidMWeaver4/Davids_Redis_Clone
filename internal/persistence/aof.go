@@ -64,7 +64,6 @@ func NewAOF(config AOFConfig) (*AOF, error) {
 	if err := os.MkdirAll(filepath.Dir(fp), 0o755); err != nil {
 		return nil, err
 	}
-
 	file, err := os.OpenFile(fp, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return nil, err
@@ -98,6 +97,8 @@ func NewAOF(config AOFConfig) (*AOF, error) {
 							case aof.errors <- syncErr:
 							default:
 							}
+							aof.mu.Unlock()
+							return
 						}
 					}
 					aof.mu.Unlock()
@@ -158,6 +159,7 @@ func (a *AOF) Close() error {
 
 	return closeErr
 }
+
 func validatePath(fp string) (string, error) {
 
 	if strings.TrimSpace(fp) == "" {

@@ -1,18 +1,27 @@
 package server
 
 import (
+	"errors"
+
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
 func hset(s *Server, client *Client, args []string) protocol.Value {
-	if len(args) != 3 {
-		return protocol.NewError("need 3 arguments in 'HSET'")
-	}
-	success, err := s.store.HSet(args[0], args[1], args[2])
+	success, err := s.executeHSet(args)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewInteger(int64(success))
+}
+func (s *Server) executeHSet(args []string) (int, error) {
+	if len(args) != 3 {
+		return 0, errors.New("need 3 arguments in 'HSET'")
+	}
+	return s.store.HSet(args[0], args[1], args[2])
+}
+func (s *Server) replayHSet(args []string) error {
+	_, err := s.executeHSet(args)
+	return err
 }
 
 func hget(s *Server, client *Client, args []string) protocol.Value {
@@ -30,16 +39,22 @@ func hget(s *Server, client *Client, args []string) protocol.Value {
 }
 
 func hdel(s *Server, client *Client, args []string) protocol.Value {
-	if len(args) < 2 {
-		return protocol.NewError("need at least 2 arguments in 'HDEL'")
-	}
-	removed, err := s.store.HDel(args[0], args[1:]...)
+	removed, err := s.executeHDel(args)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewInteger(int64(removed))
 }
-
+func (s *Server) executeHDel(args []string) (int, error) {
+	if len(args) < 2 {
+		return 0, errors.New("need at least 2 arguments in 'HDEL'")
+	}
+	return s.store.HDel(args[0], args[1:]...)
+}
+func (s *Server) replayHDel(args []string) error {
+	_, err := s.executeHDel(args)
+	return err
+}
 func hexists(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 2 {
 		return protocol.NewError("need 2 arguments in 'HEXISTS'")

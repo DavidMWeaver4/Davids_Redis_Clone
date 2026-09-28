@@ -2,12 +2,21 @@ package persistence
 
 import (
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/DavidMWeaver4/Davids_Redis_Clone/internal/protocol"
 )
 
+func cleanupAOFFile(t *testing.T, filePath string) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		_ = os.Remove(filePath)
+		_ = os.Remove(filepath.Dir(filePath))
+	})
+}
 func TestNewAOF(t *testing.T) {
 	path := "test.aof"
 
@@ -16,9 +25,7 @@ func TestNewAOF(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -50,9 +57,7 @@ func TestNewAOF_DefaultFsyncPolicy(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path: path,
@@ -106,9 +111,7 @@ func TestAOF_Append(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -149,10 +152,7 @@ func TestAOF_Append_MultipleCommands(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
-
+	cleanupAOFFile(t, filePath)
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
 		FsyncPolicy: FsyncNo,
@@ -201,9 +201,7 @@ func TestAOF_Append_AfterClose(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path: path,
@@ -234,9 +232,7 @@ func TestAOF_DoubleClose(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path: path,
@@ -262,9 +258,7 @@ func TestAOF_ConcurrentAppend(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -323,9 +317,7 @@ func TestAOF_FsyncEverySec(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -361,9 +353,7 @@ func TestAOF_Errors(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -389,9 +379,7 @@ func TestAOF_Close_EverySec(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -427,9 +415,7 @@ func TestAOF_Close_NoFsyncGoroutine(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,
@@ -460,9 +446,7 @@ func TestAOF_EverySecWritesSuccessfully(t *testing.T) {
 		t.Fatalf("validatePath() error = %v", err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(filePath)
-	})
+	cleanupAOFFile(t, filePath)
 
 	aof, err := NewAOF(AOFConfig{
 		Path:        path,

@@ -27,6 +27,7 @@ type Server struct {
 
 	aof               *persistence.AOF
 	persistenceFailed bool
+	monitorOnce       sync.Once
 }
 
 func New(addr string, s *store.Store, aof *persistence.AOF) *Server {
@@ -44,12 +45,20 @@ func (s *Server) ListenAndServe() error {
 		return err
 	}
 	s.mu.Lock()
+	if s.shuttingDown {
+		s.mu.Unlock()
+		_ = listener.Close()
+		return nil
+	}
 	s.listener = listener
 	s.mu.Unlock()
 
 	if s.aof != nil {
-		go s.monitorPersistence()
+		s.monitorOnce.Do(func() {
+			go s.monitorPersistence()
+		})
 	}
+
 	log.Printf("Redis clone listening on %s", s.addr)
 
 	for {
@@ -121,6 +130,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}()
 	select {
 	case <-done:
+		if s.aof != nil {
+			if err := s.aof.Close(); err != nil {
+				return err
+			}
+		}
 		return nil
 	case <-ctx.Done():
 		s.mu.Lock()
@@ -134,6 +148,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 			_ = client.conn.Close()
 		}
 		<-done
+		if s.aof != nil {
+			if err := s.aof.Close(); err != nil {
+				return err
+			}
+		}
 		return ctx.Err()
 	}
 }

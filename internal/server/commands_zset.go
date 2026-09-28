@@ -10,18 +10,25 @@ import (
 )
 
 func zadd(s *Server, client *Client, args []string) protocol.Value {
-	if len(args) != 3 {
-		return protocol.NewError("need 3 arguments in 'ZADD'")
-	}
-	score, err := parseScore(args[1])
-	if err != nil {
-		return protocol.NewError(err.Error())
-	}
-	statusCode, err := s.store.ZAdd(args[0], score, args[2])
+	statusCode, err := s.executeZAdd(args)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewInteger(int64(statusCode))
+}
+func (s *Server) executeZAdd(args []string) (int, error) {
+	if len(args) != 3 {
+		return 0, errors.New("need 3 arguments in 'ZADD'")
+	}
+	score, err := parseScore(args[1])
+	if err != nil {
+		return 0, err
+	}
+	return s.store.ZAdd(args[0], score, args[2])
+}
+func (s *Server) replayZAdd(args []string) error {
+	_, err := s.executeZAdd(args)
+	return err
 }
 
 func zscore(s *Server, client *Client, args []string) protocol.Value {
@@ -48,14 +55,21 @@ func zcard(s *Server, client *Client, args []string) protocol.Value {
 	return protocol.NewInteger(int64(length))
 }
 func zrem(s *Server, client *Client, args []string) protocol.Value {
-	if len(args) < 2 {
-		return protocol.NewError("need at least 2 arguments in 'ZREM'")
-	}
-	removed, err := s.store.ZRem(args[0], args[1:]...)
+	removed, err := s.executeZRem(args)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	return protocol.NewInteger(int64(removed))
+}
+func (s *Server) executeZRem(args []string) (int, error) {
+	if len(args) < 2 {
+		return 0, errors.New("need at least 2 arguments in 'ZREM'")
+	}
+	return s.store.ZRem(args[0], args[1:]...)
+}
+func (s *Server) replayZRem(args []string) error {
+	_, err := s.executeZRem(args)
+	return err
 }
 func zrange(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 3 && len(args) != 4 {
@@ -103,18 +117,25 @@ func zrank(s *Server, client *Client, args []string) protocol.Value {
 	return protocol.NewInteger(int64(rank))
 }
 func zincrby(s *Server, client *Client, args []string) protocol.Value {
-	if len(args) != 3 {
-		return protocol.NewError("need 3 arguments in 'ZINCRBY'")
-	}
-	inc, err := parseFloat64Helper(args[1])
-	if err != nil {
-		return protocol.NewError(err.Error())
-	}
-	newScore, err := s.store.ZIncrby(args[0], inc, args[2])
+	newScore, err := s.executeZIncrby(args)
 	if err != nil {
 		return protocol.NewError(err.Error())
 	}
 	return scoreValue(newScore)
+}
+func (s *Server) executeZIncrby(args []string) (float64, error) {
+	if len(args) != 3 {
+		return 0, errors.New("need 3 arguments in 'ZINCRBY'")
+	}
+	inc, err := parseFloat64Helper(args[1])
+	if err != nil {
+		return 0, err
+	}
+	return s.store.ZIncrby(args[0], inc, args[2])
+}
+func (s *Server) replayZIncrby(args []string) error {
+	_, err := s.executeZIncrby(args)
+	return err
 }
 func zrangebyscore(s *Server, client *Client, args []string) protocol.Value {
 	if len(args) != 5 {
