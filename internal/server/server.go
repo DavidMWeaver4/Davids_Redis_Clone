@@ -44,6 +44,10 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
+	return s.serve(listener)
+}
+
+func (s *Server) serve(listener net.Listener) error {
 	s.mu.Lock()
 	if s.shuttingDown {
 		s.mu.Unlock()
@@ -59,7 +63,7 @@ func (s *Server) ListenAndServe() error {
 		})
 	}
 
-	log.Printf("Redis clone listening on %s", s.addr)
+	log.Printf("Redis clone listening on %s", listener.Addr())
 
 	for {
 		conn, err := listener.Accept()
@@ -74,7 +78,7 @@ func (s *Server) ListenAndServe() error {
 		s.mu.Lock()
 		if s.shuttingDown {
 			s.mu.Unlock()
-			conn.Close()
+			_ = conn.Close()
 			continue
 		}
 		s.clients[conn] = client
