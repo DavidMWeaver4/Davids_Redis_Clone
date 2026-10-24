@@ -154,3 +154,98 @@ func TestAOFReplay_Integration(t *testing.T) {
 		}
 	}
 }
+
+func TestAOF_ReplayStopsOnApplyError(t *testing.T) {
+	aofDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(aofDir, "data"), 0o755); err != nil {
+		t.Fatalf("create data directory: %v", err)
+	}
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working directory: %v", err)
+	}
+	if err := os.Chdir(aofDir); err != nil {
+		t.Fatalf("change working directory: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(oldDir); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
+
+	fileName := "test.aof"
+
+	aof, err := persistence.NewAOF(persistence.AOFConfig{
+		Path:        fileName,
+		FsyncPolicy: persistence.FsyncAlways,
+	})
+	if err != nil {
+		t.Fatalf("create AOF: %v", err)
+	}
+
+	setName := protocol.NewArray([]protocol.Value{
+		protocol.NewBulkString("SET"),
+		protocol.NewBulkString("name"),
+		protocol.NewBulkString("David"),
+	})
+	err = aof.Append(setName)
+	if err != nil {
+		aof.Close()
+		t.Fatalf("append SET name command: %v", err)
+	}
+
+	invalidCommand := protocol.NewArray([]protocol.Value{
+		protocol.NewBulkString("INVALID"),
+	})
+	err = aof.Append(invalidCommand)
+	if err != nil {
+		aof.Close()
+		t.Fatalf("append invalid command: %v", err)
+	}
+
+	setLanguage := protocol.NewArray([]protocol.Value{
+		protocol.NewBulkString("SET"),
+		protocol.NewBulkString("language"),
+		protocol.NewBulkString("Go"),
+	})
+	err = aof.Append(setLanguage)
+	if err != nil {
+		aof.Close()
+		t.Fatalf("append SET language command: %v", err)
+	}
+
+	err = aof.Close()
+	if err != nil {
+		t.Fatalf("close AOF: %v", err)
+	}
+
+	st := store.New()
+	defer st.Close()
+
+	srv := New("127.0.0.1:0", st, nil)
+
+	err = persistence.Replay(fileName, srv.ReplayCommand)
+	if err == nil {
+		t.Fatal("expected Replay() to return an error for an invalid command")
+	}
+
+	value, ok, err := st.Get("name")
+	if err != nil {
+		t.Fatalf("get name: %v", err)
+	}
+	if !ok {
+		t.Errorf("name key does not exist")
+	}
+	if value != "David" {
+		t.Errorf("name = %q, want %q", value, "David")
+	}
+
+	_, ok, err = st.Get("language")
+	if err != nil {
+		t.Errorf("get language: %v", err)
+	}
+	if ok {
+		t.Errorf("expected language key not to exist after replay stopped")
+	}
+}

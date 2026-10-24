@@ -3,32 +3,42 @@ package protocol
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 )
 
+var ErrTruncatedRecord = errors.New("truncated RESP record")
+
 func Read(reader *bufio.Reader) (Value, error) {
 	prefix, err := reader.ReadByte()
 	if err != nil {
 		return Value{}, err
 	}
+	var value Value
 	switch prefix {
 	case '+':
-		return readSimpleString(reader)
+		value, err = readSimpleString(reader)
 	case '-':
-		return readError(reader)
+		value, err = readError(reader)
 	case ':':
-		return readInteger(reader)
+		value, err = readInteger(reader)
 	case '$':
-		return readBulkString(reader)
+		value, err = readBulkString(reader)
 	case '*':
-		return readArray(reader)
+		value, err = readArray(reader)
 	default:
 		return Value{}, fmt.Errorf("invalid RESP prefix %q", prefix)
 	}
-
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			return Value{}, fmt.Errorf("%w: %v", ErrTruncatedRecord, err)
+		}
+		return Value{}, err
+	}
+	return value, nil
 }
 
 func readLine(reader *bufio.Reader) (string, error) {

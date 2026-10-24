@@ -27,17 +27,15 @@ func Replay(path string, apply func(protocol.Value) error) error {
 
 	for {
 		command, err := protocol.Read(reader)
-		if errors.Is(err, io.EOF) {
-			break
-		}
 		if err != nil {
-			return err
-		}
-		err = apply(command)
-		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 
+		if err := apply(command); err != nil {
+			return err
+		}
 	}
-	return nil
 }
